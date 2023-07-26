@@ -1,5 +1,6 @@
-import sys
 import re
+import os
+
 
 from textual._path import CSSPathType
 from textual.app import App, CSSPathType, ComposeResult
@@ -8,8 +9,12 @@ from textual.widgets import Header, Footer, Input
 from textual.binding import Binding
 
 from burf.file_list_view import FileListView
-from burf.service_account import ServiceAccountSelectScreen
+from burf.credentials_selector import CredentialsSelector
+from burf.credentials_provider import CredentialsProvider
 from burf.storage import GCS
+
+DEFAULT_CONFIG_FILE = "~/.config/burf/burf.conf"
+DEFAULT_CONFIG_FILE_WINDOWS = "~\\AppData\\Local\\burf\\burf.conf"
 
 
 class GSUtilUIApp(App):
@@ -24,18 +29,28 @@ class GSUtilUIApp(App):
         self,
         start_bucket,
         start_subdir,
+        config_file,
         driver_class: type[Driver] | None = None,
         css_path: CSSPathType | None = None,
         watch_css: bool = False,
     ):
         super().__init__(driver_class, css_path, watch_css)
+        self.storage = GCS()
         self.start_bucket = start_bucket
         self.start_subdir = start_subdir
+
+        self.config_file = config_file
+
+        if not config_file:
+            if os.name == "nt":
+                self.config_file = DEFAULT_CONFIG_FILE_WINDOWS
+            else:
+                self.config_file = DEFAULT_CONFIG_FILE
 
     def compose(self) -> ComposeResult:
         yield Header()
         yield FileListView(
-            storage=GCS(),
+            storage=self.storage,
             start_bucket=self.start_bucket,
             start_subdir=self.start_subdir,
             id="file_list",
@@ -44,12 +59,13 @@ class GSUtilUIApp(App):
         yield Footer()
 
     def change_service_account(self, service_account):
-        pass
-        # self.query_one("#file_list").change_service_account(service_account)
+        if service_account is not None:
+            self.storage.set_credentials(service_account)
 
     def action_service_account_select(self):
         self.push_screen(
-            ServiceAccountSelectScreen(), lambda x: self.change_service_account
+            CredentialsSelector(CredentialsProvider(self.config_file)),
+            self.change_service_account,
         )
 
     def action_toggle_dark(self) -> None:
@@ -79,11 +95,29 @@ def get_gcs_bucket_and_subdir(gcs_uri):
 
 
 def main():
-    bucket_name, subdir = "", ""
-    if len(sys.argv) > 1:
-        bucket_name, subdir = get_gcs_bucket_and_subdir(sys.argv[1])
+    import argparse
 
-    app = GSUtilUIApp(start_bucket=bucket_name, start_subdir=subdir)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "gcs_uri",
+        nargs="?",
+        help="GCS URI of bucket and subdirectory in format gs://<bucket>/<subdir>",
+    )
+    parser.add_argument("-c", "--config", help="path to config file")
+
+    args = parser.parse_args()
+
+    if args.gcs_uri:
+        bucket_name, subdir = get_gcs_bucket_and_subdir(args.gcs_uri)
+    else:
+        bucket_name, subdir = "", ""
+
+    config_file = args.config
+
+    app = GSUtilUIApp(
+        config_file=config_file, start_bucket=bucket_name, start_subdir=subdir
+    )
+
     app.run()
 
 
