@@ -1,5 +1,6 @@
 import re
 import os
+import argparse
 
 
 from textual._path import CSSPathType
@@ -13,16 +14,18 @@ from burf.credentials_selector import CredentialsSelector
 from burf.credentials_provider import CredentialsProvider
 from burf.storage import GCS
 
+
 DEFAULT_CONFIG_FILE = "~/.config/burf/burf.conf"
 DEFAULT_CONFIG_FILE_WINDOWS = "~\\AppData\\Local\\burf\\burf.conf"
 
 
 class GSUtilUIApp(App):
     BINDINGS = [
-        Binding("d", "toggle_dark", "Toggle dark mode"),
-        Binding("/", "search", "Search"),
-        Binding("escape", "escape", "Cancel search", show=False),
-        Binding("ctrl+s", "service_account_select", "Select service account"),
+        Binding("d", "toggle_dark", "toggle dark mode"),
+        Binding("/", "search", "search"),
+        Binding("escape", "escape", "cancel search", show=False),
+        Binding("ctrl+s", "service_account_select", "select service account"),
+        Binding("ctrl+p", "project_select", "change gcp project"),
     ]
 
     def __init__(
@@ -62,6 +65,9 @@ class GSUtilUIApp(App):
         if service_account is not None:
             self.storage.set_credentials(service_account)
 
+    def action_project_select(self):
+        self.push_screen(ProjectSelector(ProjectProvider()))
+
     def action_service_account_select(self):
         self.push_screen(
             CredentialsSelector(CredentialsProvider(self.config_file)),
@@ -95,8 +101,6 @@ def get_gcs_bucket_and_subdir(gcs_uri):
 
 
 def main():
-    import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "gcs_uri",

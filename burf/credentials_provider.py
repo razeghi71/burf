@@ -1,7 +1,6 @@
 from google.oauth2 import service_account
 import os
 import json
-from google.auth import default
 from os.path import expanduser
 
 
@@ -37,7 +36,7 @@ class CredentialsProvider:
             else:
                 return False
 
-    def _to_credential(self, service_account_file):
+    def to_credential(self, service_account_file):
         return service_account.Credentials.from_service_account_file(
             service_account_file
         )
@@ -47,4 +46,4 @@ class CredentialsProvider:
             for service_account_file in config_file.readlines():
                 service_account_file = service_account_file.strip()
                 if self._is_valid_service_account(service_account_file):
-                    yield self._to_credential(service_account_file)
+                    yield self.to_credential(service_account_file)
