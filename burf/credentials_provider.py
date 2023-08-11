@@ -41,6 +41,13 @@ class CredentialsProvider:
             service_account_file
         )
 
+    def add_service_account(self, service_account_file):
+        if self._is_valid_service_account(service_account_file):
+            with open(self.config_file, "r+") as file:
+                accounts = map(lambda x: x.strip(), file.readlines())
+                if str(service_account_file) not in accounts:
+                    file.write(str(service_account_file) + "\n")
+
     def get_current_service_accounts(self):
         with open(self.config_file, "r") as config_file:
             for service_account_file in config_file.readlines():

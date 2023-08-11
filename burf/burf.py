@@ -12,6 +12,7 @@ from textual.binding import Binding
 from burf.file_list_view import FileListView
 from burf.credentials_selector import CredentialsSelector
 from burf.credentials_provider import CredentialsProvider
+from burf.project_selector import CloudProjectSelector
 from burf.storage import GCS
 
 
@@ -66,11 +67,11 @@ class GSUtilUIApp(App):
             self.storage.set_credentials(service_account)
 
     def action_project_select(self):
-        self.push_screen(ProjectSelector(ProjectProvider()))
+        self.push_screen(CloudProjectSelector(None))
 
-    def action_service_account_select(self):
+    def action_service_account_select(self, error=None):
         self.push_screen(
-            CredentialsSelector(CredentialsProvider(self.config_file)),
+            CredentialsSelector(CredentialsProvider(self.config_file), error),
             self.change_service_account,
         )
 

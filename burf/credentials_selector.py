@@ -1,4 +1,12 @@
-from textual.widgets import RadioButton, RadioSet, Button, DirectoryTree, Header, Footer
+from textual.widgets import (
+    RadioButton,
+    RadioSet,
+    Button,
+    DirectoryTree,
+    Header,
+    Footer,
+    Label,
+)
 from textual.containers import Horizontal, Center
 from textual.screen import Screen
 from textual.app import ComposeResult
@@ -25,17 +33,21 @@ class CredentialsSelector(Screen):
     def __init__(
         self,
         credential_provider: CredentialsProvider,
+        error=None,
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
         super().__init__(name, id, classes)
         self.credential_provider = credential_provider
+        self.error = error
 
     def compose(self) -> ComposeResult:
         service_accounts = self.credential_provider.get_current_service_accounts()
         account_emails = []
         yield Header()
+        if self.error is not None:
+            yield Label(str(self.error), id="error")
         with Center():
             with RadioSet(id="service_accounts"):
                 for account in service_accounts:
@@ -44,10 +56,13 @@ class CredentialsSelector(Screen):
                         account.service_account_email,
                         name=account,
                     )
+
+        with Center():
             with Horizontal(id="hor"):
                 yield Button("Add New", name="new")
                 yield Button("Ok", name="ok")
                 yield Button("Close", name="close")
+
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -67,13 +82,8 @@ class CredentialsSelector(Screen):
 
     def add_service_account(self, service_account_file):
         if service_account_file is not None:
-            account = self.credential_provider.to_credential(service_account_file)
-            self.query_one("#service_accounts").append(
-                RadioButton(
-                    account.service_account_email,
-                    name=account,
-                )
-            )
+            self.credential_provider.add_service_account(service_account_file)
+            self.refresh()
 
 
 class AddCredential(Screen):

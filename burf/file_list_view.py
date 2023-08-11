@@ -4,6 +4,7 @@ from textual.reactive import reactive
 from textual.widgets._list_item import ListItem
 from textual.binding import Binding
 from burf.storage import Storage, Dir, Blob
+from google.api_core.exceptions import Forbidden
 
 
 class FileListView(ListView):
@@ -92,11 +93,14 @@ class FileListView(ListView):
         if not self.current_bucket:
             self.showing_elems = self.storage.list_buckets()
             return
+        try:
+            self.showing_elems = self.storage.list_prefix(
+                bucket_name=self.current_bucket, prefix=self.current_subdir
+            )
+        except Forbidden as f:
+            self.app.action_service_account_select(f)
 
-        self.showing_elems = self.storage.list_prefix(
-            bucket_name=self.current_bucket, prefix=self.current_subdir
-        )
-
+    #
     def search_and_highlight(self, value):
         for i, child in enumerate(
             self.children[self.index + 1 :] + self.children[: self.index + 1]
