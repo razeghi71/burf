@@ -83,7 +83,10 @@ class CredentialsSelector(Screen):
     def add_service_account(self, service_account_file):
         if service_account_file is not None:
             self.credential_provider.add_service_account(service_account_file)
-            self.refresh()
+            account = self.credential_provider.to_credential(service_account_file)
+            self.query_one("#service_accounts").mount(
+                RadioButton(account.service_account_email, name=account, value=True)
+            )
 
 
 class AddCredential(Screen):
