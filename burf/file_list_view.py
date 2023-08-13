@@ -5,6 +5,7 @@ from textual.widgets._list_item import ListItem
 from textual.binding import Binding
 from burf.storage import Storage, Dir, Blob
 from google.api_core.exceptions import Forbidden
+from burf.util import human_readable_bytes
 
 
 class FileListView(ListView):
@@ -56,7 +57,9 @@ class FileListView(ListView):
             if isinstance(showing_elem, Dir):
                 pretty_name = f"📂 {showing_elem.name}"
             else:
-                pretty_name = f"📒 {showing_elem.name}"
+                pretty_name = (
+                    f"📒 {showing_elem.name} ({human_readable_bytes(showing_elem.size)})"
+                )
 
             self.append(ListItem(Label(pretty_name), name=showing_elem.name))
 
