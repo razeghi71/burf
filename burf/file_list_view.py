@@ -7,6 +7,7 @@ from burf.storage import Storage, Dir, Blob
 from google.api_core.exceptions import Forbidden
 from burf.util import human_readable_bytes
 from typing import List
+from textual.message import Message
 
 
 class FileListView(ListView):
@@ -18,6 +19,12 @@ class FileListView(ListView):
     showing_elems: reactive[List[Dir | Blob]] = reactive([])
     current_subdir = ""
     current_bucket = ""
+
+    class AccessForbidden(Message, bubble=True):
+        def __init__(self, path: str) -> None:
+            super().__init__()
+            self.path: str = path
+            """The selected item."""
 
     def __init__(
         self,
@@ -101,7 +108,7 @@ class FileListView(ListView):
                 )
         except Forbidden as f:
             self.showing_elems = []
-            self.app.action_service_account_select(f"Forbidden to get {path}")
+            self.post_message(self.AccessForbidden(path))
         self.app.title = path
 
     def action_search(self) -> None:

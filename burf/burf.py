@@ -72,6 +72,9 @@ class GSUtilUIApp(App[Any]):
     def on_input_submitted(self, value: SearchBox.Submitted) -> None:
         self.query_one("#file_list").search_and_highlight(value.input.value)
 
+    def on_file_list_view_access_forbidden(self, af: FileListView.AccessForbidden):
+        self.action_service_account_select(f"Forbidden to get gs://{af.path}")
+
 
 def get_gcs_bucket_and_subdir(gcs_uri: str) -> tuple[str, str]:
     match = re.match(r"(gs://)?(?P<bucket>[^/]+)/*(?P<subdir>.*)", gcs_uri)
