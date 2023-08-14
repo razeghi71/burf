@@ -12,7 +12,6 @@ from textual.binding import Binding
 from burf.file_list_view import FileListView
 from burf.credentials_selector import CredentialsSelector
 from burf.credentials_provider import CredentialsProvider
-from burf.project_selector import CloudProjectSelector
 from burf.storage import GCS
 
 
@@ -26,7 +25,6 @@ class GSUtilUIApp(App):
         Binding("/", "search", "search"),
         Binding("escape", "escape", "cancel search", show=False),
         Binding("ctrl+s", "service_account_select", "select service account"),
-        Binding("ctrl+p", "project_select", "change gcp project"),
     ]
 
     def __init__(
@@ -66,9 +64,6 @@ class GSUtilUIApp(App):
         if service_account is not None:
             self.storage.set_credentials(service_account)
             self.query_one("#file_list").refresh_contents()
-
-    def action_project_select(self):
-        self.push_screen(CloudProjectSelector(None))
 
     def action_service_account_select(self, error=None):
         self.push_screen(
