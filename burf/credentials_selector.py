@@ -53,26 +53,25 @@ class CredentialsSelector(Screen[Optional[service_account.Credentials]]):
         super().__init__(name, id, classes)
         self.credential_provider = credential_provider
         self.error = error
+        self.service_accounts = list(
+            self.credential_provider.get_current_service_accounts()
+        )
 
-        self.initialize_radio_buttons()
-
-    def initialize_radio_buttons(self) -> None:
-        service_accounts = self.credential_provider.get_current_service_accounts()
+    def compose(self) -> ComposeResult:
         account_emails = []
         radio_buttons = []
 
-        for account in service_accounts:
+        for account in self.service_accounts:
             account_emails.append(account.service_account_email)
             radio_buttons.append(
                 RadioButton(
                     account.service_account_email,
-                    name=account,
+                    name=account.service_account_email,
                 )
             )
 
         self.radio_set = RadioSet(*radio_buttons)
 
-    def compose(self) -> ComposeResult:
         yield Header()
         if self.error is not None:
             with Center():
@@ -94,9 +93,11 @@ class CredentialsSelector(Screen[Optional[service_account.Credentials]]):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.name == "ok":
             pressed = self.radio_set.pressed_button
-            # this is a hack using element.name but name should be str, so find another way
             if pressed:
-                self.dismiss(pressed.name)
+                for service_account in self.service_accounts:
+                    if service_account.service_account_email == pressed.name:
+                        self.dismiss(service_account)
+                        return
         elif event.button.name == "close":
             self.dismiss(None)
         elif event.button.name == "new":
@@ -109,8 +110,13 @@ class CredentialsSelector(Screen[Optional[service_account.Credentials]]):
         if service_account_file is not None:
             self.credential_provider.add_service_account(service_account_file)
             account = self.credential_provider.to_credential(service_account_file)
+            self.service_accounts.append(account)
             self.radio_set.mount(
-                RadioButton(account.service_account_email, name=account, value=True)
+                RadioButton(
+                    account.service_account_email,
+                    name=account.service_account_email,
+                    value=False,
+                )
             )
 
 
