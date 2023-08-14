@@ -86,10 +86,10 @@ class FileListView(ListView):
         self.refresh_contents()
 
     def refresh_contents(self):
-        if not self.current_bucket:
-            self.showing_elems = self.storage.list_buckets()
-            return
         try:
+            if not self.current_bucket:
+                self.showing_elems = self.storage.list_buckets()
+                return
             self.showing_elems = self.storage.list_prefix(
                 bucket_name=self.current_bucket, prefix=self.current_subdir
             )
