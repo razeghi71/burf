@@ -65,6 +65,7 @@ class GSUtilUIApp(App):
     def change_service_account(self, service_account):
         if service_account is not None:
             self.storage.set_credentials(service_account)
+            self.query_one("#file_list").refresh_contents()
 
     def action_project_select(self):
         self.push_screen(CloudProjectSelector(None))
