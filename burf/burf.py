@@ -26,6 +26,9 @@ class GSUtilUIApp(App[Any]):
         Binding("ctrl+s", "service_account_select", "select service account"),
     ]
 
+    file_list_view: FileListView
+    search_box: SearchBox
+
     def __init__(
         self,
         start_bucket: str,
@@ -46,14 +49,17 @@ class GSUtilUIApp(App[Any]):
                 self.config_file = DEFAULT_CONFIG_FILE  # What if file doesn't exist
 
     def compose(self) -> ComposeResult:
-        yield Header()
-        yield FileListView(
+        self.file_list_view = FileListView(
             storage=self.storage,
             start_bucket=self.start_bucket,
             start_subdir=self.start_subdir,
             id="file_list",
         )
-        yield SearchBox(id="search_box")
+        self.search_box = SearchBox(id="search_box")
+
+        yield Header()
+        yield self.file_list_view
+        yield self.search_box
         yield Footer()
 
     def change_service_account(
@@ -61,7 +67,7 @@ class GSUtilUIApp(App[Any]):
     ) -> None:
         if service_account is not None:
             self.storage.set_credentials(service_account)
-            self.query_one("#file_list").refresh_contents()
+            self.file_list_view.refresh_contents()
 
     def action_service_account_select(self, error: Optional[str] = None) -> None:
         self.push_screen(
@@ -70,9 +76,11 @@ class GSUtilUIApp(App[Any]):
         )
 
     def on_input_submitted(self, value: SearchBox.Submitted) -> None:
-        self.query_one("#file_list").search_and_highlight(value.input.value)
+        self.file_list_view.search_and_highlight(value.input.value)
 
-    def on_file_list_view_access_forbidden(self, af: FileListView.AccessForbidden):
+    def on_file_list_view_access_forbidden(
+        self, af: FileListView.AccessForbidden
+    ) -> None:
         self.action_service_account_select(f"Forbidden to get gs://{af.path}")
 
 

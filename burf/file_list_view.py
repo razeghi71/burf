@@ -98,7 +98,7 @@ class FileListView(ListView):
     def refresh_contents(self) -> None:
         try:
             if not self.current_bucket:
-                path = "all buckets in project"
+                path = "list of buckets in project"
                 self.showing_elems.clear()
                 self.showing_elems.extend(self.storage.list_buckets())
             else:
