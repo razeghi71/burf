@@ -66,7 +66,6 @@ class FileListView(ListView):
         if self.current_subdir == "":
             self.current_bucket = ""
         else:
-            print("current_subdir in back:", self.current_subdir)
             self.current_subdir = (
                 ""
                 if self.current_subdir.count("/") == 1
@@ -87,9 +86,6 @@ class FileListView(ListView):
         self.refresh_contents()
 
     def refresh_contents(self):
-        print("b:", self.current_bucket)
-        print("s:", self.current_subdir)
-        print("-=--==---")
         if not self.current_bucket:
             self.showing_elems = self.storage.list_buckets()
             return
@@ -100,7 +96,6 @@ class FileListView(ListView):
         except Forbidden as f:
             self.app.action_service_account_select(f)
 
-    #
     def search_and_highlight(self, value):
         for i, child in enumerate(
             self.children[self.index + 1 :] + self.children[: self.index + 1]

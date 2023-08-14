@@ -40,6 +40,10 @@ class GCS(Storage):
         blobs = self.client.bucket(bucket_name).list_blobs(delimiter="/", prefix=prefix)
         blob_list = list(blobs)
 
-        return [Dir(subdir) for subdir in blobs.prefixes] + [
+        result = [Dir(subdir) for subdir in blobs.prefixes] + [
             Blob(blob.name) for blob in blob_list
         ]
+
+        sorted_result = sorted(result, key=lambda x: x.name)
+
+        return sorted_result
