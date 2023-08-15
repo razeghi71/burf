@@ -14,6 +14,10 @@ from burf.credentials_selector import CredentialsSelector
 from burf.credentials_provider import CredentialsProvider
 from burf.storage import GCS
 
+from google.oauth2 import service_account
+
+from typing import Any, Optional
+
 
 DEFAULT_CONFIG_FILE = "~/.config/burf/burf.conf"
 DEFAULT_CONFIG_FILE_WINDOWS = "~\\AppData\\Local\\burf\\burf.conf"
@@ -26,9 +30,9 @@ class GSUtilUIApp(App):
 
     def __init__(
         self,
-        start_bucket,
-        start_subdir,
-        config_file,
+        start_bucket: str,
+        start_subdir: str,
+        config_file: str,
         driver_class: type[Driver] | None = None,
         css_path: CSSPathType | None = None,
         watch_css: bool = False,
@@ -57,12 +61,14 @@ class GSUtilUIApp(App):
         yield SearchBox(id="search_box")
         yield Footer()
 
-    def change_service_account(self, service_account):
+    def change_service_account(
+        self, service_account: Optional[service_account.Credentials]
+    ):
         if service_account is not None:
             self.storage.set_credentials(service_account)
             self.query_one("#file_list").refresh_contents()
 
-    def action_service_account_select(self, error=None):
+    def action_service_account_select(self, error: Optional[str] = None):
         self.push_screen(
             CredentialsSelector(CredentialsProvider(self.config_file), error),
             self.change_service_account,
@@ -72,7 +78,7 @@ class GSUtilUIApp(App):
         self.query_one("#file_list").search_and_highlight(value.input.value)
 
 
-def get_gcs_bucket_and_subdir(gcs_uri):
+def get_gcs_bucket_and_subdir(gcs_uri: str) -> tuple[str, str]:
     match = re.match(r"(gs://)?(?P<bucket>[^/]+)/*(?P<subdir>.*)", gcs_uri)
     if match:
         bucket = match.group("bucket")
@@ -84,7 +90,7 @@ def get_gcs_bucket_and_subdir(gcs_uri):
     return bucket, subdir
 
 
-def main():
+def main() -> Any | None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "gcs_uri",
@@ -106,7 +112,7 @@ def main():
         config_file=config_file, start_bucket=bucket_name, start_subdir=subdir
     )
 
-    app.run()
+    return app.run()
 
 
 if __name__ == "__main__":
