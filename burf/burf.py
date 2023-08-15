@@ -33,13 +33,10 @@ class GSUtilUIApp(App[Any]):
     search_box: SearchBox
 
     def __init__(
-        self,
-        start_bucket: str,
-        start_subdir: str,
-        config_file: str,
+        self, start_bucket: str, start_subdir: str, config_file: str, gcp_project: str
     ):
         super().__init__()
-        self.storage = GCS()
+        self.storage = GCS(project=gcp_project)
         self.start_bucket = start_bucket
         self.start_subdir = start_subdir
 
@@ -118,6 +115,7 @@ def main() -> Any | None:
         help="gcs uri to browse: gs://<bucket>/<subdir1>/<subdir2>",
     )
     parser.add_argument("-c", "--config", help="path to config file")
+    parser.add_argument("-p", "--project", help="gcp project to use")
 
     args = parser.parse_args()
 
@@ -127,9 +125,13 @@ def main() -> Any | None:
         bucket_name, subdir = "", ""
 
     config_file = args.config
+    gcp_project = args.project
 
     app = GSUtilUIApp(
-        config_file=config_file, start_bucket=bucket_name, start_subdir=subdir
+        config_file=config_file,
+        start_bucket=bucket_name,
+        start_subdir=subdir,
+        gcp_project=gcp_project,
     )
 
     return app.run()

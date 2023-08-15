@@ -118,10 +118,8 @@ class FileListView(ListView):
                     bucket_name=self.current_bucket, prefix=self.current_subdir
                 )
         except Forbidden:
-            self.showing_elems = []
             self.app.post_message(self.AccessForbidden(self, path))
         except RefreshError:
-            self.showing_elems = []
             self.app.post_message(self.AccessForbidden(self, path))
         self.app.title = path
 
