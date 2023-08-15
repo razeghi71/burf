@@ -45,7 +45,7 @@ class GSUtilUIApp(App):
             if os.name == "nt":
                 self.config_file = DEFAULT_CONFIG_FILE_WINDOWS
             else:
-                self.config_file = DEFAULT_CONFIG_FILE
+                self.config_file = DEFAULT_CONFIG_FILE  # What if file doesn't exist
 
     def compose(self) -> ComposeResult:
         yield Header()
