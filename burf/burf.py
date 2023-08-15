@@ -2,7 +2,6 @@ import re
 import os
 import argparse
 
-
 from textual._path import CSSPathType
 from textual.app import App, CSSPathType, ComposeResult
 from textual.driver import Driver
