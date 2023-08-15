@@ -13,10 +13,6 @@ class FileListView(ListView):
         Binding("enter", "select_cursor", "Select", show=True),
         Binding("backspace", "back", "Parent", show=True),
         Binding("/", "search", "search"),
-        # Binding("command-d", "download", "Download", show=True),
-        # Binding("command-c", "copy", "Copy", show=True),
-        # Binding("command-v", "paste", "Paste", show=True),
-        # # Binding("", "delete", "Delete", show=True),
     ]
     showing_elems = reactive([])
     current_subdir = ""
@@ -102,6 +98,8 @@ class FileListView(ListView):
             path = self.current_path()
             self.app.title = path
         except Forbidden as f:
+            self.showing_elems = []
+            self.app.title = path
             self.app.action_service_account_select(f"Forbidden to get {path}")
 
     def action_search(self):
