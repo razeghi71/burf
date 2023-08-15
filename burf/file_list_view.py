@@ -86,21 +86,19 @@ class FileListView(ListView):
         self.refresh_contents()
 
     def refresh_contents(self):
-        path = "all buckets in project"
         try:
             if not self.current_bucket:
+                path = "all buckets in project"
                 self.showing_elems = self.storage.list_buckets()
-                self.app.title = path
-                return
-            self.showing_elems = self.storage.list_prefix(
-                bucket_name=self.current_bucket, prefix=self.current_subdir
-            )
-            path = self.current_path()
-            self.app.title = path
+            else:
+                path = self.current_path()
+                self.showing_elems = self.storage.list_prefix(
+                    bucket_name=self.current_bucket, prefix=self.current_subdir
+                )
         except Forbidden as f:
             self.showing_elems = []
-            self.app.title = path
             self.app.action_service_account_select(f"Forbidden to get {path}")
+        self.app.title = path
 
     def action_search(self):
         self.app.query_one("#search_box").focus()
