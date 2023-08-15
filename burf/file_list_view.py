@@ -6,6 +6,7 @@ from textual.binding import Binding
 from burf.storage import Storage, Dir, Blob
 from google.api_core.exceptions import Forbidden
 from burf.util import human_readable_bytes
+from typing import List
 
 
 class FileListView(ListView):
@@ -14,7 +15,7 @@ class FileListView(ListView):
         Binding("backspace", "back", "Parent", show=True),
         Binding("/", "search", "search"),
     ]
-    showing_elems = reactive([])
+    showing_elems: reactive[List[Dir | Blob]] = reactive([])
     current_subdir = ""
     current_bucket = ""
 

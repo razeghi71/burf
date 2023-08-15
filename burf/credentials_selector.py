@@ -36,6 +36,8 @@ class CredentialsSelector(Screen):
         }
     """
 
+    radio_set: RadioSet
+
     def __init__(
         self,
         credential_provider: CredentialsProvider,
@@ -48,9 +50,25 @@ class CredentialsSelector(Screen):
         self.credential_provider = credential_provider
         self.error = error
 
-    def compose(self) -> ComposeResult:
+        self.initialize_radio_buttons()
+
+    def initialize_radio_buttons(self):
         service_accounts = self.credential_provider.get_current_service_accounts()
         account_emails = []
+        radio_buttons = []
+
+        for account in service_accounts:
+            account_emails.append(account.service_account_email)
+            radio_buttons.append(
+                RadioButton(
+                    account.service_account_email,
+                    name=account,
+                )
+            )
+
+        self.radio_set = RadioSet(*radio_buttons)
+
+    def compose(self) -> ComposeResult:
         yield Header()
         if self.error is not None:
             with Center():
@@ -59,13 +77,7 @@ class CredentialsSelector(Screen):
                     id="error",
                 )
         with Center():
-            with RadioSet(id="service_accounts"):
-                for account in service_accounts:
-                    account_emails.append(account.service_account_email)
-                    yield RadioButton(
-                        account.service_account_email,
-                        name=account,
-                    )
+            yield self.radio_set
 
         with Center():
             with Horizontal(id="buttons"):
@@ -77,11 +89,11 @@ class CredentialsSelector(Screen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.name == "ok":
-            for element in self.query_one("#service_accounts").children:
-                if element.value == True:
-                    self.dismiss(
-                        element.name
-                    )  # this is a hack using element.name but name should be str, so find another way
+            pressed = self.radio_set.pressed_button
+            if pressed:
+                self.dismiss(
+                    pressed.name
+                )  # this is a hack using element.name but name should be str, so find another way
         elif event.button.name == "close":
             self.dismiss(None)
         elif event.button.name == "new":
@@ -94,7 +106,7 @@ class CredentialsSelector(Screen):
         if service_account_file is not None:
             self.credential_provider.add_service_account(service_account_file)
             account = self.credential_provider.to_credential(service_account_file)
-            self.query_one("#service_accounts").mount(
+            self.radio_set.mount(
                 RadioButton(account.service_account_email, name=account, value=True)
             )
 
