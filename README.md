@@ -10,8 +10,17 @@ burf is a terminal user interface (TUI) for surfing Google Cloud Storage (GCS) b
 
 ## Usage
 
-    burf # start by listing of all buckets in current set project
-    burf gs://bucket-name/subfolder1 # start by showing all prefixes inside bucket-name/subfolder1
+    usage: burf.py [-h] [-c CONFIG] [-p PROJECT] [gcs_uri]
+
+    positional arguments:
+        gcs_uri               gcs uri to browse: gs://<bucket>/<subdir1>/<subdir2>
+
+    options:
+        -h, --help            show this help message and exit
+        -c CONFIG, --config CONFIG
+                                path to config file
+        -p PROJECT, --project PROJECT
+                                gcp project to use
 
 ## License
 
