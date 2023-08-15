@@ -6,7 +6,7 @@ from textual.binding import Binding
 from burf.storage import Storage, Dir, Blob
 from google.api_core.exceptions import Forbidden
 from burf.util import human_readable_bytes
-from typing import Sequence
+from typing import List
 
 
 class FileListView(ListView):
@@ -15,7 +15,7 @@ class FileListView(ListView):
         Binding("backspace", "back", "Parent", show=True),
         Binding("/", "search", "search"),
     ]
-    showing_elems: reactive[Sequence[Dir | Blob]] = reactive([])
+    showing_elems: reactive[List[Dir | Blob]] = reactive([])
     current_subdir = ""
     current_bucket = ""
 
@@ -48,7 +48,7 @@ class FileListView(ListView):
         self.refresh_contents()
 
     def watch_showing_elems(
-        self, _: Sequence[Dir | Blob], new_showing_elems: Sequence[Dir | Blob]
+        self, _: List[Dir | Blob], new_showing_elems: List[Dir | Blob]
     ) -> None:
         self.clear()
         self.index = 0
@@ -92,7 +92,8 @@ class FileListView(ListView):
         try:
             if not self.current_bucket:
                 path = "all buckets in project"
-                self.showing_elems = self.storage.list_buckets()
+                self.showing_elems.clear()
+                self.showing_elems.extend(self.storage.list_buckets())
             else:
                 path = self.current_path()
                 self.showing_elems = self.storage.list_prefix(
@@ -108,8 +109,8 @@ class FileListView(ListView):
 
     def search_and_highlight(self, value: str) -> None:
         index = self.index or 0
-        items_after_selected = self.children[index + 1 :]
-        items_til_selected = self.children[: index + 1]
+        items_after_selected = list(self.children[index + 1 :])
+        items_til_selected = list(self.children[: index + 1])
 
         for i, child in enumerate(items_after_selected + items_til_selected):
             if child.name and value in child.name:
