@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from google.cloud.storage import Client  # type: ignore
 from google.auth.credentials import Credentials
-from typing import List, Optional
+from typing import Sequence, Optional
 
 
 class Dir:
@@ -21,11 +21,11 @@ class Blob:
 
 class Storage(ABC):
     @abstractmethod
-    def list_buckets(self) -> List[Dir]:
+    def list_buckets(self) -> Sequence[Dir]:
         pass
 
     @abstractmethod
-    def list_prefix(self, bucket_name: str, prefix: str) -> List[Dir | Blob]:
+    def list_prefix(self, bucket_name: str, prefix: str) -> Sequence[Dir | Blob]:
         pass
 
 
@@ -36,11 +36,11 @@ class GCS(Storage):
     def set_credentials(self, credentials: Credentials) -> None:
         self.client = Client(credentials=credentials)
 
-    def list_buckets(self) -> List[Dir]:
+    def list_buckets(self) -> Sequence[Dir]:
         buckets = self.client.list_buckets()
         return [Dir(bucket.name) for bucket in buckets]
 
-    def list_prefix(self, bucket_name: str, prefix: str) -> List[Dir | Blob]:
+    def list_prefix(self, bucket_name: str, prefix: str) -> Sequence[Dir | Blob]:
         blobs = self.client.bucket(bucket_name).list_blobs(delimiter="/", prefix=prefix)
         blob_list = list(blobs)
 

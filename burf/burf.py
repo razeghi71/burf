@@ -2,9 +2,7 @@ import re
 import os
 import argparse
 
-from textual._path import CSSPathType
-from textual.app import App, CSSPathType, ComposeResult
-from textual.driver import Driver
+from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer
 from textual.binding import Binding
 
@@ -23,7 +21,7 @@ DEFAULT_CONFIG_FILE = "~/.config/burf/burf.conf"
 DEFAULT_CONFIG_FILE_WINDOWS = "~\\AppData\\Local\\burf\\burf.conf"
 
 
-class GSUtilUIApp(App):
+class GSUtilUIApp(App[Any]):
     BINDINGS = [
         Binding("ctrl+s", "service_account_select", "select service account"),
     ]
@@ -33,11 +31,8 @@ class GSUtilUIApp(App):
         start_bucket: str,
         start_subdir: str,
         config_file: str,
-        driver_class: type[Driver] | None = None,
-        css_path: CSSPathType | None = None,
-        watch_css: bool = False,
     ):
-        super().__init__(driver_class, css_path, watch_css)
+        super().__init__()
         self.storage = GCS()
         self.start_bucket = start_bucket
         self.start_subdir = start_subdir
@@ -63,18 +58,18 @@ class GSUtilUIApp(App):
 
     def change_service_account(
         self, service_account: Optional[service_account.Credentials]
-    ):
+    ) -> None:
         if service_account is not None:
             self.storage.set_credentials(service_account)
             self.query_one("#file_list").refresh_contents()
 
-    def action_service_account_select(self, error: Optional[str] = None):
+    def action_service_account_select(self, error: Optional[str] = None) -> None:
         self.push_screen(
             CredentialsSelector(CredentialsProvider(self.config_file), error),
             self.change_service_account,
         )
 
-    def on_input_submitted(self, value):
+    def on_input_submitted(self, value: SearchBox.Submitted) -> None:
         self.query_one("#file_list").search_and_highlight(value.input.value)
 
 

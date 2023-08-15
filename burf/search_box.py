@@ -7,6 +7,6 @@ class SearchBox(Input):
         Binding("escape", "cancel_search", "cancel search"),
     ]
 
-    def action_cancel_search(self):
+    def action_cancel_search(self) -> None:
         self.value = ""
         self.app.query_one("#file_list").focus()

@@ -102,10 +102,10 @@ class CredentialsSelector(Screen[Optional[service_account.Credentials]]):
         elif event.button.name == "new":
             self.app.push_screen(AddCredential(), self.add_service_account)
 
-    def action_close_screen(self):
+    def action_close_screen(self) -> None:
         self.dismiss(None)
 
-    def add_service_account(self, service_account_file):
+    def add_service_account(self, service_account_file: Optional[str]) -> None:
         if service_account_file is not None:
             self.credential_provider.add_service_account(service_account_file)
             account = self.credential_provider.to_credential(service_account_file)
@@ -114,7 +114,7 @@ class CredentialsSelector(Screen[Optional[service_account.Credentials]]):
             )
 
 
-class AddCredential(Screen):
+class AddCredential(Screen[Optional[str]]):
     def __init__(
         self,
         name: str | None = None,
@@ -132,8 +132,10 @@ class AddCredential(Screen):
         yield DirectoryTree(expanduser("~"), id="directory")
         yield Footer()
 
-    def on_directory_tree_file_selected(self, event):
-        self.dismiss(event.path)
+    def on_directory_tree_file_selected(
+        self, event: DirectoryTree.FileSelected
+    ) -> None:
+        self.dismiss(str(event.path))
 
-    def action_close_screen(self):
+    def action_close_screen(self) -> None:
         self.dismiss(None)

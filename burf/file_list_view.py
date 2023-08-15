@@ -6,7 +6,7 @@ from textual.binding import Binding
 from burf.storage import Storage, Dir, Blob
 from google.api_core.exceptions import Forbidden
 from burf.util import human_readable_bytes
-from typing import List
+from typing import Sequence
 
 
 class FileListView(ListView):
@@ -15,15 +15,15 @@ class FileListView(ListView):
         Binding("backspace", "back", "Parent", show=True),
         Binding("/", "search", "search"),
     ]
-    showing_elems: reactive[List[Dir | Blob]] = reactive([])
+    showing_elems: reactive[Sequence[Dir | Blob]] = reactive([])
     current_subdir = ""
     current_bucket = ""
 
     def __init__(
         self,
         storage: Storage,
-        start_bucket="",
-        start_subdir="",
+        start_bucket: str = "",
+        start_subdir: str = "",
         *children: ListItem,
         initial_index: int | None = 0,
         name: str | None = None,
@@ -47,7 +47,9 @@ class FileListView(ListView):
     def _on_mount(self, _: Mount) -> None:
         self.refresh_contents()
 
-    def watch_showing_elems(self, _, new_showing_elems: List[Dir | Blob]):
+    def watch_showing_elems(
+        self, _: Sequence[Dir | Blob], new_showing_elems: Sequence[Dir | Blob]
+    ) -> None:
         self.clear()
         self.index = 0
         for showing_elem in new_showing_elems:
@@ -59,7 +61,7 @@ class FileListView(ListView):
 
             self.append(ListItem(Label(pretty_name), name=showing_elem.name))
 
-    def action_back(self):
+    def action_back(self) -> None:
         if self.current_bucket == "":
             return
         if self.current_subdir == "":
@@ -73,8 +75,10 @@ class FileListView(ListView):
 
         self.refresh_contents()
 
-    def on_list_view_selected(self, child_element):
-        child_name = child_element.item.name
+    def on_list_view_selected(self, child_element: ListView.Selected) -> None:
+        child_name = child_element.item.name or ""
+        if child_name == "":
+            return
         if self.current_bucket != "" and child_name[-1] != "/":
             return
         elif self.current_bucket == "":
@@ -84,7 +88,7 @@ class FileListView(ListView):
 
         self.refresh_contents()
 
-    def refresh_contents(self):
+    def refresh_contents(self) -> None:
         try:
             if not self.current_bucket:
                 path = "all buckets in project"
@@ -99,13 +103,13 @@ class FileListView(ListView):
             self.app.action_service_account_select(f"Forbidden to get {path}")
         self.app.title = path
 
-    def action_search(self):
+    def action_search(self) -> None:
         self.app.query_one("#search_box").focus()
 
-    def search_and_highlight(self, value: str):
+    def search_and_highlight(self, value: str) -> None:
         index = self.index or 0
-        items_after_selected = list(self.children[index + 1 :])
-        items_til_selected = list(self.children[: index + 1])
+        items_after_selected = self.children[index + 1 :]
+        items_til_selected = self.children[: index + 1]
 
         for i, child in enumerate(items_after_selected + items_til_selected):
             if child.name and value in child.name:
