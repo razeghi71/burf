@@ -22,7 +22,6 @@ DEFAULT_CONFIG_FILE_WINDOWS = "~\\AppData\\Local\\burf\\burf.conf"
 
 class GSUtilUIApp(App):
     BINDINGS = [
-        Binding("d", "toggle_dark", "toggle dark mode"),
         Binding("ctrl+s", "service_account_select", "select service account"),
     ]
 
@@ -69,9 +68,6 @@ class GSUtilUIApp(App):
             CredentialsSelector(CredentialsProvider(self.config_file), error),
             self.change_service_account,
         )
-
-    def action_toggle_dark(self) -> None:
-        self.dark = not self.dark
 
     def on_input_submitted(self, value):
         self.query_one("#file_list").search_and_highlight(value.input.value)
