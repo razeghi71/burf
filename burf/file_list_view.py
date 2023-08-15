@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from textual.events import Mount
 from textual.widgets import ListView, ListItem, Label
 from textual.reactive import reactive
@@ -23,10 +25,16 @@ class FileListView(ListView):
 
     class AccessForbidden(Message, bubble=True):
         path: str
+        file_list_view: FileListView
 
-        def __init__(self, path: str) -> None:
-            self.path = path
+        def __init__(self, file_list_view: FileListView, path: str) -> None:
             super().__init__()
+            self.file_list_view = file_list_view
+            self.path = path
+
+        @property
+        def control(self) -> FileListView:
+            return self.file_list_view
 
     def __init__(
         self,
@@ -105,16 +113,16 @@ class FileListView(ListView):
                 new_showing_elem.extend(self.storage.list_buckets())
                 self.showing_elems = new_showing_elem
             else:
-                path = self.current_path()
+                path = "gs://" + self.current_path()
                 self.showing_elems = self.storage.list_prefix(
                     bucket_name=self.current_bucket, prefix=self.current_subdir
                 )
         except Forbidden:
             self.showing_elems = []
-            self.post_message(self.AccessForbidden(path))
+            self.app.post_message(self.AccessForbidden(self, path))
         except RefreshError:
             self.showing_elems = []
-            self.post_message(self.AccessForbidden(path))
+            self.app.post_message(self.AccessForbidden(self, path))
         self.app.title = path
 
     def action_search(self) -> None:

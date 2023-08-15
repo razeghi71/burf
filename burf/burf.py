@@ -2,6 +2,7 @@ import re
 import os
 import argparse
 
+from textual import on
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer
 from textual.binding import Binding
@@ -81,7 +82,7 @@ class GSUtilUIApp(App[Any]):
     def on_file_list_view_access_forbidden(
         self, af: FileListView.AccessForbidden
     ) -> None:
-        self.action_service_account_select(f"Forbidden to get gs://{af.path}")
+        self.action_service_account_select(f"Forbidden to get {af.path}")
 
 
 def get_gcs_bucket_and_subdir(gcs_uri: str) -> tuple[str, str]:
@@ -101,7 +102,7 @@ def main() -> Any | None:
     parser.add_argument(
         "gcs_uri",
         nargs="?",
-        help="GCS URI of bucket and subdirectory in format gs://<bucket>/<subdir>",
+        help="gcs uri to browse: gs://<bucket>/<subdir1>/<subdir2>",
     )
     parser.add_argument("-c", "--config", help="path to config file")
 
