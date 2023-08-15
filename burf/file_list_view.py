@@ -47,17 +47,15 @@ class FileListView(ListView):
     def _on_mount(self, _: Mount) -> None:
         self.refresh_contents()
 
-    def watch_showing_elems(self, _, new_showing_elems):
+    def watch_showing_elems(self, _, new_showing_elems: List[Dir | Blob]):
         self.clear()
         self.index = 0
         for showing_elem in new_showing_elems:
-            pretty_name = ""
-            if isinstance(showing_elem, Dir):
-                pretty_name = f"📂 {showing_elem.name}"
-            else:
-                pretty_name = (
-                    f"📒 {showing_elem.name} ({human_readable_bytes(showing_elem.size)})"
-                )
+            match showing_elem:
+                case Dir(name):
+                    pretty_name = f"📂 {name}"
+                case Blob(name, size):
+                    pretty_name = f"📒 {name} ({human_readable_bytes(size)})"
 
             self.append(ListItem(Label(pretty_name), name=showing_elem.name))
 
@@ -104,13 +102,15 @@ class FileListView(ListView):
     def action_search(self):
         self.app.query_one("#search_box").focus()
 
-    def search_and_highlight(self, value):
-        for i, child in enumerate(
-            self.children[self.index + 1 :] + self.children[: self.index + 1]
-        ):
-            if value in child.name:
-                self.index = (i + self.index + 1) % len(self.children)
+    def search_and_highlight(self, value: str):
+        index = self.index or 0
+        items_after_selected = list(self.children[index + 1 :])
+        items_til_selected = list(self.children[: index + 1])
+
+        for i, child in enumerate(items_after_selected + items_til_selected):
+            if child.name and value in child.name:
+                self.index = (i + index + 1) % len(self.children)
                 return
 
-    def current_path(self):
+    def current_path(self) -> str:
         return self.current_bucket + "/" + self.current_subdir

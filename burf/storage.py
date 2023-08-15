@@ -7,11 +7,15 @@ class Dir:
     def __init__(self, name):
         self.name = name
 
+    __match_args__ = ("name",)
+
 
 class Blob:
     def __init__(self, name, size):
         self.name = name
         self.size = size
+
+    __match_args__ = ("name", "size")
 
 
 class Storage(ABC):
