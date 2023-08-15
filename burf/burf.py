@@ -5,7 +5,7 @@ import argparse
 from textual._path import CSSPathType
 from textual.app import App, CSSPathType, ComposeResult
 from textual.driver import Driver
-from textual.widgets import Header, Footer, Input
+from textual.widgets import Header, Footer
 from textual.binding import Binding
 
 from burf.file_list_view import FileListView
@@ -73,7 +73,7 @@ class GSUtilUIApp(App):
 
 
 def get_gcs_bucket_and_subdir(gcs_uri):
-    match = re.match(r"gs://(?P<bucket>[^/]+)/*(?P<subdir>.*)", gcs_uri)
+    match = re.match(r"(gs://)?(?P<bucket>[^/]+)/*(?P<subdir>.*)", gcs_uri)
     if match:
         bucket = match.group("bucket")
         subdir = match.group("subdir")

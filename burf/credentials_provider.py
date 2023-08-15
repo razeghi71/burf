@@ -1,14 +1,16 @@
-from google.oauth2 import service_account
 import os
 import json
-from os.path import expanduser
+
+from google.oauth2 import service_account
+
+from typing import Iterator
 
 
 class CredentialsProvider:
-    def __init__(self, config_file) -> None:
-        self.config_file = expanduser(config_file)
+    def __init__(self, config_file: str) -> None:
+        self.config_file = os.path.expanduser(config_file)
 
-    def _is_valid_service_account(self, file_name):
+    def _is_valid_service_account(self, file_name: str) -> bool:
         if not os.path.exists(file_name):
             return False
 
@@ -36,19 +38,19 @@ class CredentialsProvider:
             else:
                 return False
 
-    def to_credential(self, service_account_file):
+    def to_credential(self, service_account_file: str) -> service_account.Credentials:
         return service_account.Credentials.from_service_account_file(
             service_account_file
         )
 
-    def add_service_account(self, service_account_file):
+    def add_service_account(self, service_account_file: str) -> None:
         if self._is_valid_service_account(service_account_file):
             with open(self.config_file, "r+") as file:
                 accounts = map(lambda x: x.strip(), file.readlines())
                 if str(service_account_file) not in accounts:
                     file.write(str(service_account_file) + "\n")
 
-    def get_current_service_accounts(self):
+    def get_current_service_accounts(self) -> Iterator[service_account.Credentials]:
         with open(self.config_file, "r") as config_file:
             for service_account_file in config_file.readlines():
                 service_account_file = service_account_file.strip()

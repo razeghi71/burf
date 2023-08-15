@@ -13,8 +13,12 @@ from textual.app import ComposeResult
 from burf.credentials_provider import CredentialsProvider
 from os.path import expanduser
 
+from google.oauth2 import service_account
 
-class CredentialsSelector(Screen):
+from typing import Optional
+
+
+class CredentialsSelector(Screen[Optional[service_account.Credentials]]):
     BINDINGS = [
         ("ctrl+s", "app.pop_screen", "cancel"),
         ("escape", "close_screen", "close"),
@@ -41,7 +45,7 @@ class CredentialsSelector(Screen):
     def __init__(
         self,
         credential_provider: CredentialsProvider,
-        error=None,
+        error: Optional[str] = None,
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
@@ -52,7 +56,7 @@ class CredentialsSelector(Screen):
 
         self.initialize_radio_buttons()
 
-    def initialize_radio_buttons(self):
+    def initialize_radio_buttons(self) -> None:
         service_accounts = self.credential_provider.get_current_service_accounts()
         account_emails = []
         radio_buttons = []
@@ -90,10 +94,9 @@ class CredentialsSelector(Screen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.name == "ok":
             pressed = self.radio_set.pressed_button
+            # this is a hack using element.name but name should be str, so find another way
             if pressed:
-                self.dismiss(
-                    pressed.name
-                )  # this is a hack using element.name but name should be str, so find another way
+                self.dismiss(pressed.name)
         elif event.button.name == "close":
             self.dismiss(None)
         elif event.button.name == "new":
