@@ -24,9 +24,15 @@ class CredentialsSelector(Screen):
         #service_accounts {
             width: auto;
         }
-        #hor{
+        #buttons{
             padding-top: 1;
             width: auto;
+        }
+        #error {
+            padding-top: 1;
+            padding-bottom: 1;
+            color: red;
+            text-style: bold;
         }
     """
 
@@ -47,7 +53,11 @@ class CredentialsSelector(Screen):
         account_emails = []
         yield Header()
         if self.error is not None:
-            yield Label(str(self.error), id="error")
+            with Center():
+                yield Label(
+                    str(self.error) + ". Please select a compatible service account:",
+                    id="error",
+                )
         with Center():
             with RadioSet(id="service_accounts"):
                 for account in service_accounts:
@@ -58,9 +68,9 @@ class CredentialsSelector(Screen):
                     )
 
         with Center():
-            with Horizontal(id="hor"):
-                yield Button("Add New", name="new")
+            with Horizontal(id="buttons"):
                 yield Button("Ok", name="ok")
+                yield Button("Add New", name="new")
                 yield Button("Close", name="close")
 
         yield Footer()

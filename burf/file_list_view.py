@@ -12,6 +12,7 @@ class FileListView(ListView):
     BINDINGS = [
         Binding("enter", "select_cursor", "Select", show=True),
         Binding("backspace", "back", "Parent", show=True),
+        Binding("/", "search", "search"),
         # Binding("command-d", "download", "Download", show=True),
         # Binding("command-c", "copy", "Copy", show=True),
         # Binding("command-v", "paste", "Paste", show=True),
@@ -89,15 +90,22 @@ class FileListView(ListView):
         self.refresh_contents()
 
     def refresh_contents(self):
+        path = "all buckets in project"
         try:
             if not self.current_bucket:
                 self.showing_elems = self.storage.list_buckets()
+                self.app.title = path
                 return
             self.showing_elems = self.storage.list_prefix(
                 bucket_name=self.current_bucket, prefix=self.current_subdir
             )
+            path = self.current_path()
+            self.app.title = path
         except Forbidden as f:
-            self.app.action_service_account_select(f)
+            self.app.action_service_account_select(f"Forbidden to get {path}")
+
+    def action_search(self):
+        self.app.query_one("#search_box").focus()
 
     def search_and_highlight(self, value):
         for i, child in enumerate(
@@ -106,3 +114,6 @@ class FileListView(ListView):
             if value in child.name:
                 self.index = (i + self.index + 1) % len(self.children)
                 return
+
+    def current_path(self):
+        return self.current_bucket + "/" + self.current_subdir

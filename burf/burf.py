@@ -10,6 +10,7 @@ from textual.widgets import Header, Footer, Input
 from textual.binding import Binding
 
 from burf.file_list_view import FileListView
+from burf.search_box import SearchBox
 from burf.credentials_selector import CredentialsSelector
 from burf.credentials_provider import CredentialsProvider
 from burf.storage import GCS
@@ -22,8 +23,6 @@ DEFAULT_CONFIG_FILE_WINDOWS = "~\\AppData\\Local\\burf\\burf.conf"
 class GSUtilUIApp(App):
     BINDINGS = [
         Binding("d", "toggle_dark", "toggle dark mode"),
-        Binding("/", "search", "search"),
-        Binding("escape", "escape", "cancel search", show=False),
         Binding("ctrl+s", "service_account_select", "select service account"),
     ]
 
@@ -57,7 +56,7 @@ class GSUtilUIApp(App):
             start_subdir=self.start_subdir,
             id="file_list",
         )
-        yield Input(id="search_box")
+        yield SearchBox(id="search_box")
         yield Footer()
 
     def change_service_account(self, service_account):
@@ -74,15 +73,8 @@ class GSUtilUIApp(App):
     def action_toggle_dark(self) -> None:
         self.dark = not self.dark
 
-    def action_search(self):
-        self.query_one("#search_box").focus()
-
     def on_input_submitted(self, value):
         self.query_one("#file_list").search_and_highlight(value.input.value)
-
-    def action_escape(self):
-        self.query_one("#search_box").value = ""
-        self.query_one("#file_list").focus()
 
 
 def get_gcs_bucket_and_subdir(gcs_uri):
