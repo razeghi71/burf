@@ -11,8 +11,8 @@ from typing import List
 
 class FileListView(ListView):
     BINDINGS = [
-        Binding("enter", "select_cursor", "Select", show=True),
-        Binding("backspace", "back", "Parent", show=True),
+        Binding("enter", "select_cursor", "Select"),
+        Binding("backspace", "back", "Parent"),
         Binding("/", "search", "search"),
     ]
     showing_elems: reactive[List[Dir | Blob]] = reactive([])
