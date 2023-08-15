@@ -11,6 +11,7 @@ from burf.file_list_view import FileListView
 from burf.search_box import SearchBox
 from burf.credentials_selector import CredentialsSelector
 from burf.credentials_provider import CredentialsProvider
+from burf.project_selector import ProjectSelector
 from burf.storage import GCS
 
 from google.oauth2 import service_account
@@ -25,6 +26,7 @@ DEFAULT_CONFIG_FILE_WINDOWS = "~\\AppData\\Local\\burf\\burf.conf"
 class GSUtilUIApp(App[Any]):
     BINDINGS = [
         Binding("ctrl+s", "service_account_select", "select service account"),
+        Binding("ctrl+p", "project_select", "select gcp project"),
     ]
 
     file_list_view: FileListView
@@ -70,10 +72,21 @@ class GSUtilUIApp(App[Any]):
             self.storage.set_credentials(service_account)
             self.file_list_view.refresh_contents()
 
+    def change_project(self, project: Optional[str]) -> None:
+        if project is not None:
+            self.storage.set_project(project)
+            self.file_list_view.refresh_contents()
+
     def action_service_account_select(self, error: Optional[str] = None) -> None:
         self.push_screen(
             CredentialsSelector(CredentialsProvider(self.config_file), error),
             self.change_service_account,
+        )
+
+    def action_project_select(self) -> None:
+        self.push_screen(
+            ProjectSelector(),
+            self.change_project,
         )
 
     def on_input_submitted(self, value: SearchBox.Submitted) -> None:

@@ -28,13 +28,42 @@ class Storage(ABC):
     def list_prefix(self, bucket_name: str, prefix: str) -> List[Dir | Blob]:
         pass
 
+    @abstractmethod
+    def get_project(self):
+        pass
+
 
 class GCS(Storage):
-    def __init__(self, credentials: Optional[Credentials] = None):
-        self.client = Client(credentials=credentials)
+    credentials: Optional[Credentials]
+    project: str | object
+    client: Client
+
+    def __init__(
+        self, credentials: Optional[Credentials] = None, project: Optional[str] = None
+    ):
+        self.credentials = credentials
+        self.project = project
+        self.build_client()
 
     def set_credentials(self, credentials: Credentials) -> None:
-        self.client = Client(credentials=credentials)
+        self.credentials = credentials
+        self.build_client()
+
+    def set_project(self, project: str) -> None:
+        self.project = project
+        self.build_client()
+
+    def get_project(self):
+        if self.project is not None:
+            return self.project
+        else:
+            return self.client.project
+
+    def build_client(self):
+        if self.project is not None:
+            self.client = Client(credentials=self.credentials, project=self.project)
+        else:
+            self.client = Client(credentials=self.credentials)
 
     def list_buckets(self) -> List[Dir]:
         buckets = self.client.list_buckets()

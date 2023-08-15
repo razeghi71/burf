@@ -108,7 +108,7 @@ class FileListView(ListView):
     def refresh_contents(self) -> None:
         try:
             if not self.current_bucket:
-                path = "list of buckets in project"
+                path = f"list of buckets in project: {self.storage.get_project()}"
                 new_showing_elem: List[Dir | Blob] = []
                 new_showing_elem.extend(self.storage.list_buckets())
                 self.showing_elems = new_showing_elem
