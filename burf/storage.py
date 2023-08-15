@@ -3,18 +3,14 @@ from google.cloud import storage  # type: ignore
 from typing import List
 
 
-class Path(ABC):
+class Dir:
     def __init__(self, name):
         self.name = name
 
 
-class Dir(Path):
-    pass
-
-
-class Blob(Path):
+class Blob:
     def __init__(self, name, size):
-        super().__init__(name)
+        self.name = name
         self.size = size
 
 

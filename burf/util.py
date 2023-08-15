@@ -1,7 +1,7 @@
 import math
 
 
-def human_readable_bytes(size_in_bytes):
+def human_readable_bytes(size_in_bytes: int) -> str:
     if size_in_bytes == 0:
         return "0B"
 
