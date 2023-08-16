@@ -5,6 +5,7 @@ from textual.widgets._list_item import ListItem
 from textual.binding import Binding
 from burf.storage import Storage, Dir, Blob
 from google.api_core.exceptions import Forbidden
+from google.auth.exceptions import RefreshError
 from burf.util import human_readable_bytes
 from typing import List
 from textual.message import Message
@@ -21,10 +22,11 @@ class FileListView(ListView):
     current_bucket = ""
 
     class AccessForbidden(Message, bubble=True):
+        path: str
+
         def __init__(self, path: str) -> None:
+            self.path = path
             super().__init__()
-            self.path: str = path
-            """The selected item."""
 
     def __init__(
         self,
@@ -106,7 +108,10 @@ class FileListView(ListView):
                 self.showing_elems = self.storage.list_prefix(
                     bucket_name=self.current_bucket, prefix=self.current_subdir
                 )
-        except Forbidden as f:
+        except Forbidden:
+            self.showing_elems = []
+            self.post_message(self.AccessForbidden(path))
+        except RefreshError:
             self.showing_elems = []
             self.post_message(self.AccessForbidden(path))
         self.app.title = path
