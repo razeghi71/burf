@@ -8,6 +8,11 @@ burf is a terminal user interface (TUI) for surfing Google Cloud Storage (GCS) b
     cd burf
     pip install .
 
+## Usage
+
+    burf # start by listing of all buckets in current set project
+    burf gs://bucket-name/subfolder1 # start by showing all prefixes inside bucket-name/subfolder1
+
 ## License
 
 burf is released under the [MIT License](LICENSE).
