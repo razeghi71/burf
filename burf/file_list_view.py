@@ -101,8 +101,9 @@ class FileListView(ListView):
         try:
             if not self.current_bucket:
                 path = "list of buckets in project"
-                self.showing_elems.clear()
-                self.showing_elems.extend(self.storage.list_buckets())
+                new_showing_elem: List[Dir | Blob] = []
+                new_showing_elem.extend(self.storage.list_buckets())
+                self.showing_elems = new_showing_elem
             else:
                 path = self.current_path()
                 self.showing_elems = self.storage.list_prefix(
