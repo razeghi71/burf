@@ -95,22 +95,18 @@ class FileListView(ListView):
                     pretty_name = Label(f"📒 {name}")
                     pretty_name.styles.width = "50%"
 
-                    time = Label(
-                        time_created.strftime("%Y-%m-%d %H:%M:%S.%f"),
-                    )
-                    time.styles.width = "30%"
-                    time.styles.background = Color.lighten(
-                        self.background_colors[0], 0.2
-                    )
+                    bg_color = self.background_colors[0]
+
+                    time_label = Label(time_created.strftime("%Y-%m-%d %H:%M:%S.%f"))
+                    time_label.styles.width = "30%"
+                    time_label.styles.background = Color.lighten(bg_color, 0.2)
 
                     size_label = Label(human_readable_bytes(size))
-                    size_label.styles.width = "10%"
-                    size_label.styles.background = Color.lighten(
-                        self.background_colors[0], 0.1
-                    )
+                    size_label.styles.width = "20%"
+                    size_label.styles.background = Color.lighten(bg_color, 0.1)
 
                     row.append(pretty_name)
-                    row.append(time)
+                    row.append(time_label)
                     row.append(size_label)
 
             self.append(
