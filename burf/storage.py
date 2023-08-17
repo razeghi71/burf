@@ -32,13 +32,13 @@ class Storage(ABC):
         pass
 
     @abstractmethod
-    def get_project(self):
+    def get_project(self) -> str:
         pass
 
 
 class GCS(Storage):
     credentials: Optional[Credentials]
-    project: str | object
+    project: Optional[str]
     client: Client
 
     def __init__(
@@ -56,13 +56,13 @@ class GCS(Storage):
         self.project = project
         self.build_client()
 
-    def get_project(self):
+    def get_project(self) -> str:
         if self.project is not None:
             return self.project
         else:
-            return self.client.project
+            return str(self.client.project)
 
-    def build_client(self):
+    def build_client(self) -> None:
         if self.project is not None:
             self.client = Client(credentials=self.credentials, project=self.project)
         else:

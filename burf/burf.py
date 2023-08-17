@@ -17,6 +17,7 @@ from google.oauth2 import service_account
 
 from typing import Any, Optional
 
+from burf.util import get_gcs_bucket_and_subdir
 
 DEFAULT_CONFIG_FILE = "~/.config/burf/burf.conf"
 DEFAULT_CONFIG_FILE_WINDOWS = "~\\AppData\\Local\\burf\\burf.conf"
@@ -87,9 +88,9 @@ class GSUtilUIApp(App[Any]):
             self.change_service_account,
         )
 
-    def action_project_select(self) -> None:
+    def action_project_select(self, error: Optional[str] = None) -> None:
         self.push_screen(
-            StringGetter(place_holder="gcp project name"),
+            StringGetter(place_holder="gcp project name", error=error),
             self.change_project,
         )
 
@@ -107,17 +108,10 @@ class GSUtilUIApp(App[Any]):
     ) -> None:
         self.action_service_account_select(f"Forbidden to get {af.path}")
 
-
-def get_gcs_bucket_and_subdir(gcs_uri: str) -> tuple[str, str]:
-    match = re.match(r"(gs://)?(?P<bucket>[^/]+)/*(?P<subdir>.*)", gcs_uri)
-    if match:
-        bucket = match.group("bucket")
-        subdir = match.group("subdir")
-    else:
-        bucket = gcs_uri
-        subdir = ""
-
-    return bucket, subdir
+    def on_file_list_view_invalid_project(self, ip: FileListView.InvalidProject):
+        self.action_project_select(
+            f"Invalid Project Name: {ip.project}, please enter a valid project name:"
+        )
 
 
 def main() -> Any | None:

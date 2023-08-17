@@ -1,9 +1,4 @@
-from textual.widgets import (
-    Button,
-    Header,
-    Footer,
-    Input,
-)
+from textual.widgets import Button, Header, Footer, Input, Label
 from textual.containers import Horizontal, Center
 from textual.screen import Screen
 from textual.app import ComposeResult
@@ -38,17 +33,23 @@ class StringGetter(Screen[Optional[str]]):
     def __init__(
         self,
         place_holder: str,
+        error: Optional[str] = None,
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
         super().__init__(name, id, classes)
         self.place_holder = place_holder
+        self.error = error
 
     def compose(self) -> ComposeResult:
         self.input = Input(placeholder=self.place_holder)
 
         yield Header()
+
+        if self.error is not None:
+            with Center():
+                yield Label(str(self.error), id="error")
 
         with Center():
             yield self.input

@@ -8,7 +8,7 @@ from textual.reactive import reactive
 from textual.widgets._list_item import ListItem
 from textual.binding import Binding
 from burf.storage import Storage, Dir, Blob
-from google.api_core.exceptions import Forbidden
+from google.api_core.exceptions import Forbidden, BadRequest
 from google.auth.exceptions import RefreshError
 from burf.util import human_readable_bytes
 from typing import List
@@ -33,6 +33,19 @@ class FileListView(ListView):
             super().__init__()
             self.file_list_view = file_list_view
             self.path = path
+
+        @property
+        def control(self) -> FileListView:
+            return self.file_list_view
+
+    class InvalidProject(Message, bubble=True):
+        project: str
+        file_list_view: FileListView
+
+        def __init__(self, file_list_view: FileListView, project: str) -> None:
+            super().__init__()
+            self.file_list_view = file_list_view
+            self.project = project
 
         @property
         def control(self) -> FileListView:
@@ -84,7 +97,6 @@ class FileListView(ListView):
 
                     time = Label(
                         time_created.strftime("%Y-%m-%d %H:%M:%S.%f"),
-                        classes="bucket-time",
                     )
                     time.styles.width = "30%"
                     time.styles.background = Color.lighten(
@@ -102,7 +114,12 @@ class FileListView(ListView):
                     row.append(size_label)
 
             self.append(
-                ListItem(Horizontal(*row, classes="row"), name=showing_elem.name)
+                ListItem(
+                    Horizontal(
+                        *row,
+                    ),
+                    name=showing_elem.name,
+                )
             )
 
     def action_back(self) -> None:
@@ -150,8 +167,13 @@ class FileListView(ListView):
             self.app.post_message(self.AccessForbidden(self, path))
         except RefreshError:
             self.app.post_message(self.AccessForbidden(self, path))
-        except Exception:
-            pass  # TODO: handle
+        except BadRequest as e:
+            for error in e.errors:
+                if "Invalid project" in error["message"]:
+                    self.app.post_message(
+                        self.InvalidProject(self, self.storage.get_project())
+                    )
+                    break
         self.app.title = path
         return False
 
