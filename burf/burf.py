@@ -2,7 +2,6 @@ import re
 import os
 import argparse
 
-from textual import on
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer
 from textual.binding import Binding
@@ -11,7 +10,7 @@ from burf.file_list_view import FileListView
 from burf.search_box import SearchBox
 from burf.credentials_selector import CredentialsSelector
 from burf.credentials_provider import CredentialsProvider
-from burf.project_selector import ProjectSelector
+from burf.string_getter import StringGetter
 from burf.storage import GCS
 
 from google.oauth2 import service_account
@@ -27,6 +26,7 @@ class GSUtilUIApp(App[Any]):
     BINDINGS = [
         Binding("ctrl+s", "service_account_select", "select service account"),
         Binding("ctrl+p", "project_select", "select gcp project"),
+        Binding("ctrl+g", "go_to", "go to address"),
     ]
 
     file_list_view: FileListView
@@ -74,6 +74,13 @@ class GSUtilUIApp(App[Any]):
             self.storage.set_project(project)
             self.file_list_view.refresh_contents()
 
+    def change_addr(self, new_addr: Optional[str]) -> None:
+        if new_addr is not None:
+            bucket_name, subdir = get_gcs_bucket_and_subdir(new_addr)
+            self.file_list_view.current_bucket = bucket_name
+            self.file_list_view.current_subdir = subdir
+            self.file_list_view.refresh_contents()
+
     def action_service_account_select(self, error: Optional[str] = None) -> None:
         self.push_screen(
             CredentialsSelector(CredentialsProvider(self.config_file), error),
@@ -82,8 +89,14 @@ class GSUtilUIApp(App[Any]):
 
     def action_project_select(self) -> None:
         self.push_screen(
-            ProjectSelector(),
+            StringGetter(place_holder="gcp project name"),
             self.change_project,
+        )
+
+    def action_go_to(self) -> None:
+        self.push_screen(
+            StringGetter(place_holder="gs://bucket_name/subdir1/subdir2"),
+            self.change_addr,
         )
 
     def on_input_submitted(self, value: SearchBox.Submitted) -> None:

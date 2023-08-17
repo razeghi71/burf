@@ -132,7 +132,7 @@ class FileListView(ListView):
 
         self.refresh_contents()
 
-    def refresh_contents(self) -> None:
+    def refresh_contents(self) -> bool:
         try:
             if not self.current_bucket:
                 path = f"list of buckets in project: {self.storage.get_project()}"
@@ -144,11 +144,16 @@ class FileListView(ListView):
                 self.showing_elems = self.storage.list_prefix(
                     bucket_name=self.current_bucket, prefix=self.current_subdir
                 )
+            self.app.title = path
+            return True
         except Forbidden:
             self.app.post_message(self.AccessForbidden(self, path))
         except RefreshError:
             self.app.post_message(self.AccessForbidden(self, path))
+        except Exception:
+            pass  # TODO: handle
         self.app.title = path
+        return False
 
     def action_search(self) -> None:
         self.app.query_one("#search_box").focus()

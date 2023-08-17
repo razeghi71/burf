@@ -11,9 +11,8 @@ from textual.app import ComposeResult
 from typing import Optional
 
 
-class ProjectSelector(Screen[Optional[str]]):
+class StringGetter(Screen[Optional[str]]):
     BINDINGS = [
-        ("ctrl+s", "app.pop_screen", "cancel"),
         ("escape", "close_screen", "close"),
     ]
 
@@ -34,17 +33,20 @@ class ProjectSelector(Screen[Optional[str]]):
     """
 
     input: Input
+    place_holder: str
 
     def __init__(
         self,
+        place_holder: str,
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
         super().__init__(name, id, classes)
+        self.place_holder = place_holder
 
     def compose(self) -> ComposeResult:
-        self.input = Input(placeholder="project name")
+        self.input = Input(placeholder=self.place_holder)
 
         yield Header()
 
