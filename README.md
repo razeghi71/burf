@@ -4,6 +4,12 @@ burf is a terminal user interface (TUI) for surfing Google Cloud Storage (GCS) b
 
 ## Installation
 
+You can install it directly from PyPi:
+
+    pip install burf
+
+or using source code:
+
     git clone git@github.com:razeghi71/burf.git
     cd burf
     pip install .
