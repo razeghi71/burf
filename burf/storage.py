@@ -3,6 +3,8 @@ from google.cloud.storage import Client  # type: ignore
 from google.auth.credentials import Credentials
 from typing import List, Optional
 
+from datetime import datetime
+
 
 class Dir:
     def __init__(self, name: str):
@@ -12,11 +14,12 @@ class Dir:
 
 
 class Blob:
-    def __init__(self, name: str, size: int):
+    def __init__(self, name: str, size: int, time_created: datetime):
         self.name = name
         self.size = size
+        self.time_created = time_created
 
-    __match_args__ = ("name", "size")
+    __match_args__ = ("name", "size", "time_created")
 
 
 class Storage(ABC):
@@ -74,7 +77,7 @@ class GCS(Storage):
         blob_list = list(blobs)
 
         result = [Dir(subdir) for subdir in blobs.prefixes] + [
-            Blob(blob.name, blob.size) for blob in blob_list
+            Blob(blob.name, blob.size, blob.time_created) for blob in blob_list
         ]
 
         sorted_result = sorted(result, key=lambda x: x.name)

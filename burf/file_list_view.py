@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from textual.events import Mount
 from textual.widgets import ListView, ListItem, Label
+from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.widgets._list_item import ListItem
 from textual.binding import Binding
@@ -70,13 +71,31 @@ class FileListView(ListView):
         self.clear()
         self.index = 0
         for showing_elem in new_showing_elems:
+            row = []
             match showing_elem:
                 case Dir(name):
-                    pretty_name = f"📂 {name}"
-                case Blob(name, size):
-                    pretty_name = f"📒 {name} ({human_readable_bytes(size)})"
+                    pretty_name = Label(f"📂 {name}")
+                    pretty_name.styles.width = "70%"
+                    row.append(pretty_name)
+                case Blob(name, size, time_created):
+                    pretty_name = Label(f"📒 {name}")
+                    size = Label(human_readable_bytes(size))
+                    time = Label(
+                        time_created.strftime("%Y-%m-%d %H:%M"),
+                        classes="bucket-time",
+                    )
+                    pretty_name.styles.width = "60%"
+                    size.styles.width = "20%"
+                    size.styles.background = "gray"
+                    time.styles.width = "20%"
 
-            self.append(ListItem(Label(pretty_name), name=showing_elem.name))
+                    row.append(pretty_name)
+                    row.append(size)
+                    row.append(time)
+
+            self.append(
+                ListItem(Horizontal(*row, classes="row"), name=showing_elem.name)
+            )
 
     def action_back(self) -> None:
         if self.current_bucket == "":
