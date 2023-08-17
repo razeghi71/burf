@@ -47,7 +47,15 @@ class GSUtilUIApp(App[Any]):
             if os.name == "nt":
                 self.config_file = DEFAULT_CONFIG_FILE_WINDOWS
             else:
-                self.config_file = DEFAULT_CONFIG_FILE  # What if file doesn't exist
+                self.config_file = DEFAULT_CONFIG_FILE
+
+        config_file_path = os.path.expanduser(self.config_file)
+        config_dir = os.path.dirname(config_file_path)
+        os.makedirs(config_dir, exist_ok=True)
+
+        if not os.path.exists(config_file_path):
+            # Create an empty config file if it doesn't exist
+            open(config_file_path, "a").close()
 
     def compose(self) -> ComposeResult:
         self.file_list_view = FileListView(
