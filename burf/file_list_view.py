@@ -100,13 +100,13 @@ class FileListView(ListView):
                     )
                     time.styles.width = "30%"
                     time.styles.background = Color.lighten(
-                        self.app.background_colors[0], 0.2
+                        self.background_colors[0], 0.2
                     )
 
                     size_label = Label(human_readable_bytes(size))
                     size_label.styles.width = "10%"
                     size_label.styles.background = Color.lighten(
-                        self.app.background_colors[0], 0.1
+                        self.background_colors[0], 0.1
                     )
 
                     row.append(pretty_name)
