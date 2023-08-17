@@ -3,6 +3,7 @@ from __future__ import annotations
 from textual.events import Mount
 from textual.widgets import ListView, ListItem, Label
 from textual.containers import Horizontal
+from textual.color import Color
 from textual.reactive import reactive
 from textual.widgets._list_item import ListItem
 from textual.binding import Binding
@@ -79,19 +80,26 @@ class FileListView(ListView):
                     row.append(pretty_name)
                 case Blob(name, size, time_created):
                     pretty_name = Label(f"📒 {name}")
-                    size = Label(human_readable_bytes(size))
+                    pretty_name.styles.width = "50%"
+
                     time = Label(
-                        time_created.strftime("%Y-%m-%d %H:%M"),
+                        time_created.strftime("%Y-%m-%d %H:%M:%S.%f"),
                         classes="bucket-time",
                     )
-                    pretty_name.styles.width = "60%"
-                    size.styles.width = "20%"
-                    size.styles.background = "gray"
-                    time.styles.width = "20%"
+                    time.styles.width = "30%"
+                    time.styles.background = Color.lighten(
+                        self.app.background_colors[0], 0.2
+                    )
+
+                    size_label = Label(human_readable_bytes(size))
+                    size_label.styles.width = "10%"
+                    size_label.styles.background = Color.lighten(
+                        self.app.background_colors[0], 0.1
+                    )
 
                     row.append(pretty_name)
-                    row.append(size)
                     row.append(time)
+                    row.append(size_label)
 
             self.append(
                 ListItem(Horizontal(*row, classes="row"), name=showing_elem.name)
