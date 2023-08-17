@@ -116,7 +116,9 @@ class GSUtilUIApp(App[Any]):
     ) -> None:
         self.action_service_account_select(f"Forbidden to get {af.path}")
 
-    def on_file_list_view_invalid_project(self, ip: FileListView.InvalidProject):
+    def on_file_list_view_invalid_project(
+        self, ip: FileListView.InvalidProject
+    ) -> None:
         self.action_project_select(
             f"Invalid Project Name: {ip.project}, please enter a valid project name:"
         )
