@@ -3,7 +3,7 @@ import os
 import argparse
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer
+from textual.widgets import Header, Footer, Label
 from textual.binding import Binding
 
 from burf.file_list_view import FileListView
