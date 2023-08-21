@@ -89,20 +89,20 @@ class FileListView(ListView):
             match showing_elem:
                 case Dir(name):
                     pretty_name = Label(f"📂 {name}")
-                    pretty_name.styles.width = "70%"
+                    pretty_name.styles.width = "65%"
                     row.append(pretty_name)
                 case Blob(name, size, time_created):
                     pretty_name = Label(f"📒 {name}")
-                    pretty_name.styles.width = "50%"
+                    pretty_name.styles.width = "65%"
 
                     bg_color = self.background_colors[0]
 
                     time_label = Label(time_created.strftime("%Y-%m-%d %H:%M:%S.%f"))
-                    time_label.styles.width = "30%"
+                    time_label.styles.width = "25%"
                     time_label.styles.background = Color.lighten(bg_color, 0.2)
 
                     size_label = Label(human_readable_bytes(size))
-                    size_label.styles.width = "20%"
+                    size_label.styles.width = "10%"
                     size_label.styles.background = Color.lighten(bg_color, 0.1)
 
                     row.append(pretty_name)
