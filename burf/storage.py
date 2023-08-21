@@ -77,7 +77,7 @@ class GCS(Storage):
         blob_list = list(blobs)
 
         result = [Dir(subdir) for subdir in blobs.prefixes] + [
-            Blob(blob.name, blob.size, blob.time_created) for blob in blob_list
+            Blob(blob.name, blob.size, blob.updated) for blob in blob_list
         ]
 
         sorted_result = sorted(result, key=lambda x: x.name)
