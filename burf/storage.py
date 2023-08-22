@@ -79,6 +79,9 @@ class BucketWithPrefix:
             return other.bucket_name == self.bucket_name and other.prefix == self.prefix
         return False
 
+    def __hash__(self) -> int:
+        return hash((self.bucket_name, self.prefix))
+
 
 class GCS(Storage):
     credentials: Optional[Credentials]

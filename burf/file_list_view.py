@@ -9,7 +9,7 @@ from textual.binding import Binding
 from burf.storage import Storage, Dir, Blob, BucketWithPrefix
 from google.api_core.exceptions import Forbidden, BadRequest
 from google.auth.exceptions import RefreshError
-from burf.util import human_readable_bytes
+from burf.util import human_readable_bytes, RecentDict
 from typing import List
 from textual.message import Message
 
@@ -48,6 +48,7 @@ class FileListView(ListView):
     ]
 
     showing_elems: reactive[List[Dir | Blob]] = reactive([])
+    position_cache: RecentDict(BucketWithPrefix, int) = RecentDict(10)
 
     def __init__(
         self,
@@ -83,6 +84,7 @@ class FileListView(ListView):
 
     @uri.setter
     def uri(self, new_uri: BucketWithPrefix) -> None:
+        self.position_cache[self.uri] = self.index
         self._uri = new_uri
 
     def watch_showing_elems(
@@ -90,6 +92,7 @@ class FileListView(ListView):
     ) -> None:
         self.clear()
         self.index = 0
+
         for showing_elem in new_showing_elems:
             row = []
             match showing_elem:
@@ -123,6 +126,9 @@ class FileListView(ListView):
                     name=showing_elem.name,
                 )
             )
+
+        if self.uri in self.position_cache:
+            self.index = self.position_cache[self.uri]
 
     def action_back(self) -> None:
         self.uri = self.uri.parent()

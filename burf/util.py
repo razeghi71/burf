@@ -1,6 +1,7 @@
 import math
 import re
 from burf.storage import BucketWithPrefix
+from collections import OrderedDict
 
 
 def human_readable_bytes(size_in_bytes: int) -> str:
@@ -25,3 +26,14 @@ def get_gcs_bucket_and_prefix(gcs_uri: str) -> BucketWithPrefix:
         prefix = ""
 
     return BucketWithPrefix(bucket, prefix)
+
+
+class RecentDict(OrderedDict):
+    def __init__(self, max_elements, *args, **kwargs):
+        self.max_elements = max_elements
+        super().__init__(*args, **kwargs)
+
+    def __setitem__(self, key, value):
+        if len(self) >= self.max_elements:
+            self.popitem(last=False)
+        super().__setitem__(key, value)
