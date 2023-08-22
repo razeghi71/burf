@@ -11,13 +11,13 @@ from burf.search_box import SearchBox
 from burf.credentials_selector import CredentialsSelector
 from burf.credentials_provider import CredentialsProvider
 from burf.string_getter import StringGetter
-from burf.storage import GCS
+from burf.storage import GCS, BucketWithPrefix
 
 from google.oauth2 import service_account
 
 from typing import Any, Optional
 
-from burf.util import get_gcs_bucket_and_subdir
+from burf.util import get_gcs_bucket_and_prefix
 
 DEFAULT_CONFIG_FILE = "~/.config/burf/burf.conf"
 DEFAULT_CONFIG_FILE_WINDOWS = "~\\AppData\\Local\\burf\\burf.conf"
@@ -28,18 +28,16 @@ class GSUtilUIApp(App[Any]):
         Binding("ctrl+s", "service_account_select", "select service account"),
         Binding("ctrl+p", "project_select", "select gcp project"),
         Binding("ctrl+g", "go_to", "go to address"),
+        Binding("ctrl+d", "download", "download selected"),
     ]
 
     file_list_view: FileListView
     search_box: SearchBox
 
-    def __init__(
-        self, start_bucket: str, start_subdir: str, config_file: str, gcp_project: str
-    ):
+    def __init__(self, uri: BucketWithPrefix, config_file: str, gcp_project: str):
         super().__init__()
         self.storage = GCS(project=gcp_project)
-        self.start_bucket = start_bucket
-        self.start_subdir = start_subdir
+        self.uri = uri
 
         self.config_file = config_file
 
@@ -60,8 +58,7 @@ class GSUtilUIApp(App[Any]):
     def compose(self) -> ComposeResult:
         self.file_list_view = FileListView(
             storage=self.storage,
-            start_bucket=self.start_bucket,
-            start_subdir=self.start_subdir,
+            uri=self.uri,
             id="file_list",
         )
         self.search_box = SearchBox(id="search_box")
@@ -71,6 +68,7 @@ class GSUtilUIApp(App[Any]):
         yield self.search_box
         yield Footer()
 
+    # screen call-backs
     def change_service_account(
         self, service_account: Optional[service_account.Credentials]
     ) -> None:
@@ -85,11 +83,11 @@ class GSUtilUIApp(App[Any]):
 
     def change_addr(self, new_addr: Optional[str]) -> None:
         if new_addr is not None:
-            bucket_name, subdir = get_gcs_bucket_and_subdir(new_addr)
-            self.file_list_view.current_bucket = bucket_name
-            self.file_list_view.current_subdir = subdir
+            uri = get_gcs_bucket_and_prefix(new_addr)
+            self.file_list_view.uri = uri
             self.file_list_view.refresh_contents()
 
+    # actions
     def action_service_account_select(self, error: Optional[str] = None) -> None:
         self.push_screen(
             CredentialsSelector(CredentialsProvider(self.config_file), error),
@@ -108,6 +106,10 @@ class GSUtilUIApp(App[Any]):
             self.change_addr,
         )
 
+    def action_download(self) -> None:
+        pass
+
+    # message handlers
     def on_input_submitted(self, value: SearchBox.Submitted) -> None:
         self.file_list_view.search_and_highlight(value.input.value)
 
@@ -137,17 +139,16 @@ def main() -> Any | None:
     args = parser.parse_args()
 
     if args.gcs_uri:
-        bucket_name, subdir = get_gcs_bucket_and_subdir(args.gcs_uri)
+        uri = get_gcs_bucket_and_prefix(args.gcs_uri)
     else:
-        bucket_name, subdir = "", ""
+        uri = BucketWithPrefix("", "")
 
     config_file = args.config
     gcp_project = args.project
 
     app = GSUtilUIApp(
         config_file=config_file,
-        start_bucket=bucket_name,
-        start_subdir=subdir,
+        uri=uri,
         gcp_project=gcp_project,
     )
 

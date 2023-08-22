@@ -1,5 +1,6 @@
 import math
 import re
+from burf.storage import BucketWithPrefix
 
 
 def human_readable_bytes(size_in_bytes: int) -> str:
@@ -14,13 +15,13 @@ def human_readable_bytes(size_in_bytes: int) -> str:
     return f"{size} {size_name[idx]}"
 
 
-def get_gcs_bucket_and_subdir(gcs_uri: str) -> tuple[str, str]:
-    match = re.match(r"(gs://)?(?P<bucket>[^/]+)/*(?P<subdir>.*)", gcs_uri)
+def get_gcs_bucket_and_prefix(gcs_uri: str) -> BucketWithPrefix:
+    match = re.match(r"(gs://)?(?P<bucket>[^/]+)/*(?P<prefix>.*)", gcs_uri)
     if match:
         bucket = match.group("bucket")
-        subdir = match.group("subdir")
+        prefix = match.group("prefix")
     else:
         bucket = gcs_uri
-        subdir = ""
+        prefix = ""
 
-    return bucket, subdir
+    return BucketWithPrefix(bucket, prefix)

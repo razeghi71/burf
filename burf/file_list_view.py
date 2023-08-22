@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from textual.events import Mount
 from textual.widgets import ListView, ListItem, Label
 from textual.containers import Horizontal
 from textual.color import Color
 from textual.reactive import reactive
 from textual.widgets._list_item import ListItem
 from textual.binding import Binding
-from burf.storage import Storage, Dir, Blob
+from burf.storage import Storage, Dir, Blob, BucketWithPrefix
 from google.api_core.exceptions import Forbidden, BadRequest
 from google.auth.exceptions import RefreshError
 from burf.util import human_readable_bytes
@@ -16,15 +15,6 @@ from textual.message import Message
 
 
 class FileListView(ListView):
-    BINDINGS = [
-        Binding("enter", "select_cursor", "Select"),
-        Binding("backspace", "back", "Parent"),
-        Binding("/", "search", "search"),
-    ]
-    showing_elems: reactive[List[Dir | Blob]] = reactive([])
-    current_subdir = ""
-    current_bucket = ""
-
     class AccessForbidden(Message, bubble=True):
         path: str
         file_list_view: FileListView
@@ -51,11 +41,18 @@ class FileListView(ListView):
         def control(self) -> FileListView:
             return self.file_list_view
 
+    BINDINGS = [
+        Binding("enter", "select_cursor", "Select"),
+        Binding("backspace", "back", "Parent"),
+        Binding("/", "search", "search"),
+    ]
+
+    showing_elems: reactive[List[Dir | Blob]] = reactive([])
+
     def __init__(
         self,
         storage: Storage,
-        start_bucket: str = "",
-        start_subdir: str = "",
+        uri: BucketWithPrefix = BucketWithPrefix("", ""),
         *children: ListItem,
         initial_index: int | None = 0,
         name: str | None = None,
@@ -72,12 +69,21 @@ class FileListView(ListView):
             disabled=disabled,
         )
 
-        self.storage = storage
-        self.current_bucket = start_bucket
-        self.current_subdir = start_subdir
-
-    def _on_mount(self, _: Mount) -> None:
+        self._storage = storage
+        self._uri = uri
         self.refresh_contents()
+
+    @property
+    def storage(self) -> Storage:
+        return self._storage
+
+    @property
+    def uri(self) -> BucketWithPrefix:
+        return self._uri
+
+    @uri.setter
+    def uri(self, new_uri: BucketWithPrefix) -> None:
+        self._uri = new_uri
 
     def watch_showing_elems(
         self, _: List[Dir | Blob], new_showing_elems: List[Dir | Blob]
@@ -119,43 +125,33 @@ class FileListView(ListView):
             )
 
     def action_back(self) -> None:
-        if self.current_bucket == "":
-            return
-        if self.current_subdir == "":
-            self.current_bucket = ""
-        else:
-            self.current_subdir = (
-                ""
-                if self.current_subdir.count("/") == 1
-                else "/".join(self.current_subdir.split("/")[:-2]) + "/"
-            )
-
+        self.uri = self.uri.parent()
         self.refresh_contents()
 
-    def on_list_view_selected(self, child_element: ListView.Selected) -> None:
-        child_name = child_element.item.name or ""
-        if child_name == "":
+    def on_list_view_selected(self, selected: ListView.Selected) -> None:
+        selected_name = selected.item.name or ""
+        if selected_name == "":
             return
-        if self.current_bucket != "" and child_name[-1] != "/":
+        if self.uri.bucket_name != "" and selected_name[-1] != "/":
             return
-        elif self.current_bucket == "":
-            self.current_bucket = child_name
+        elif self.uri.bucket_name == "":
+            self.uri = BucketWithPrefix(selected_name, self.uri.prefix)
         else:
-            self.current_subdir = child_name
+            self.uri = BucketWithPrefix(self.uri.bucket_name, selected_name)
 
         self.refresh_contents()
 
     def refresh_contents(self) -> bool:
         try:
-            if not self.current_bucket:
+            if not self.uri.bucket_name:
                 path = f"list of buckets in project: ({self.storage.get_project()})"
                 new_showing_elem: List[Dir | Blob] = []
                 new_showing_elem.extend(self.storage.list_buckets())
                 self.showing_elems = new_showing_elem
             else:
-                path = "gs://" + self.current_path()
+                path = "gs://" + str(self.uri)
                 self.showing_elems = self.storage.list_prefix(
-                    bucket_name=self.current_bucket, prefix=self.current_subdir
+                    bucket_name=self.uri.bucket_name, prefix=self.uri.prefix
                 )
             self.app.title = path
             return True
@@ -186,6 +182,3 @@ class FileListView(ListView):
             if child.name and value in child.name:
                 self.index = (i + index + 1) % len(self.children)
                 return
-
-    def current_path(self) -> str:
-        return self.current_bucket + "/" + self.current_subdir
