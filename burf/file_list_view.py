@@ -1,19 +1,21 @@
 from __future__ import annotations
 
-from textual.widgets import ListView, ListItem, Label
-from textual.containers import Horizontal
-from textual.color import Color
-from textual.reactive import reactive
-from textual.widgets._list_item import ListItem
-from textual.binding import Binding
-from burf.storage.storage import Storage
-from burf.storage.paths import Dir, Blob
-from burf.storage.ds import BucketWithPrefix
-from google.api_core.exceptions import Forbidden, BadRequest
-from google.auth.exceptions import RefreshError
-from burf.util import human_readable_bytes, RecentDict
 from typing import List
+
+from google.api_core.exceptions import BadRequest, Forbidden
+from google.auth.exceptions import RefreshError
+from textual.binding import Binding
+from textual.color import Color
+from textual.containers import Horizontal
 from textual.message import Message
+from textual.reactive import reactive
+from textual.widgets import Label, ListItem, ListView
+from textual.widgets._list_item import ListItem
+
+from burf.storage.ds import BucketWithPrefix
+from burf.storage.paths import Blob, Dir
+from burf.storage.storage import Storage
+from burf.util import RecentDict, human_readable_bytes
 
 
 class FileListView(ListView):

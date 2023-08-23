@@ -1,9 +1,9 @@
-from burf.storage.ds import BucketWithPrefix
-from collections import OrderedDict
-from typing import Any, TypeVar, Generic
-
-import re
 import math
+import re
+from collections import OrderedDict
+from typing import Any, Generic, TypeVar
+
+from burf.storage.ds import BucketWithPrefix
 
 
 def human_readable_bytes(size_in_bytes: int) -> str:

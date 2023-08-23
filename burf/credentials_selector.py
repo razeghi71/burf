@@ -1,21 +1,21 @@
-from textual.widgets import (
-    RadioButton,
-    RadioSet,
-    Button,
-    DirectoryTree,
-    Header,
-    Footer,
-    Label,
-)
-from textual.containers import Horizontal, Center
-from textual.screen import Screen
-from textual.app import ComposeResult
-from burf.credentials_provider import CredentialsProvider
 from os.path import expanduser
+from typing import Optional
 
 from google.oauth2 import service_account
+from textual.app import ComposeResult
+from textual.containers import Center, Horizontal
+from textual.screen import Screen
+from textual.widgets import (
+    Button,
+    DirectoryTree,
+    Footer,
+    Header,
+    Label,
+    RadioButton,
+    RadioSet,
+)
 
-from typing import Optional
+from burf.credentials_provider import CredentialsProvider
 
 
 class CredentialsSelector(Screen[Optional[service_account.Credentials]]):

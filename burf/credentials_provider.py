@@ -1,9 +1,8 @@
-import os
 import json
+import os
+from typing import Iterator
 
 from google.oauth2 import service_account
-
-from typing import Iterator
 
 
 class CredentialsProvider:

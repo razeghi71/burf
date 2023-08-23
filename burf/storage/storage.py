@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from google.cloud.storage import Client  # type: ignore
-from google.auth.credentials import Credentials
 from typing import List, Optional
 
-from burf.storage.paths import Dir, Blob
+from google.auth.credentials import Credentials
+from google.cloud.storage import Client  # type: ignore
+
+from burf.storage.paths import Blob, Dir
 
 
 class Storage(ABC):

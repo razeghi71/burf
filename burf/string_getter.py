@@ -1,9 +1,9 @@
-from textual.widgets import Button, Header, Footer, Input, Label
-from textual.containers import Horizontal, Center
-from textual.screen import Screen
-from textual.app import ComposeResult
-
 from typing import Optional
+
+from textual.app import ComposeResult
+from textual.containers import Center, Horizontal
+from textual.screen import Screen
+from textual.widgets import Button, Footer, Header, Input, Label
 
 
 class StringGetter(Screen[Optional[str]]):

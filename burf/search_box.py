@@ -1,5 +1,5 @@
-from textual.widgets import Input
 from textual.binding import Binding
+from textual.widgets import Input
 
 
 class SearchBox(Input):

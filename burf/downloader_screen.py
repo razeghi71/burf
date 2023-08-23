@@ -1,10 +1,12 @@
-from textual.app import ComposeResult
-from textual.screen import Screen
-from textual.widgets import Header, Label, Footer
 from os.path import expanduser
 from typing import Generator
-from burf.storage.storage import Storage
+
+from textual.app import ComposeResult
+from textual.screen import Screen
+from textual.widgets import Footer, Header, Label
+
 from burf.storage.ds import BucketWithPrefix
+from burf.storage.storage import Storage
 
 
 class Downloader:
