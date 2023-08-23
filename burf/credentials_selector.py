@@ -135,7 +135,7 @@ class AddCredential(Screen[Optional[str]]):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield DirectoryTree(expanduser("."), id="directory")
+        yield DirectoryTree(expanduser("~"), id="directory")
         yield Footer()
 
     def on_directory_tree_file_selected(

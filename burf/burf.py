@@ -9,12 +9,14 @@ from textual.widgets import Footer, Header
 
 from burf.credentials_provider import CredentialsProvider
 from burf.credentials_selector import CredentialsSelector
+from burf.downloader_screen import DownloaderScreen
 from burf.file_list_view import FileListView
 from burf.search_box import SearchBox
 from burf.storage.ds import BucketWithPrefix
 from burf.storage.storage import GCS
 from burf.string_getter import StringGetter
 from burf.util import get_gcs_bucket_and_prefix
+
 
 DEFAULT_CONFIG_FILE = "~/.config/burf/burf.conf"
 DEFAULT_CONFIG_FILE_WINDOWS = "~\\AppData\\Local\\burf\\burf.conf"
@@ -105,7 +107,15 @@ class GSUtilUIApp(App[Any]):
         )
 
     def action_download(self) -> None:
-        pass
+        self.push_screen(
+            DownloaderScreen(
+                BucketWithPrefix(
+                    self.file_list_view.uri.bucket_name,
+                    self.file_list_view.highlighted_child.name,
+                ),
+                self.storage,
+            )
+        )
 
     # message handlers
     def on_input_submitted(self, value: SearchBox.Submitted) -> None:

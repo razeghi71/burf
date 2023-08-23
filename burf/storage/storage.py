@@ -17,7 +17,15 @@ class Storage(ABC):
         pass
 
     @abstractmethod
+    def list_all_blobs(self, bucket_name: str, prefix: str) -> List[Blob]:
+        pass
+
+    @abstractmethod
     def get_project(self) -> str:
+        pass
+
+    @abstractmethod
+    def download_to_filename(self, blob: Blob, dest: str) -> None:
         pass
 
 
@@ -68,3 +76,10 @@ class GCS(Storage):
         sorted_result = sorted(result, key=lambda x: x.name)
 
         return sorted_result
+
+    def list_all_blobs(self, bucket_name: str, prefix: str) -> List[Blob]:
+        blobs = self.client.bucket(bucket_name).list_blobs(prefix=prefix)
+        return [Blob(blob.name, blob.size, blob.update) for blob in blobs]
+
+    def download_to_filename(self, blob: Blob, dest: str) -> None:
+        pass
