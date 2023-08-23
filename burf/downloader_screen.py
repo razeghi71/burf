@@ -4,7 +4,7 @@ from textual.widgets import Header, Label, Footer
 from os.path import expanduser
 from typing import Generator
 from burf.storage.storage import Storage
-from burf.storage.bucket_with_prefix import BucketWithPrefix
+from burf.storage.ds import BucketWithPrefix
 
 
 class Downloader:
