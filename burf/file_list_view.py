@@ -6,7 +6,9 @@ from textual.color import Color
 from textual.reactive import reactive
 from textual.widgets._list_item import ListItem
 from textual.binding import Binding
-from burf.storage import Storage, Dir, Blob, BucketWithPrefix
+from burf.storage.storage import Storage
+from burf.storage.paths import Dir, Blob
+from burf.storage.ds import BucketWithPrefix
 from google.api_core.exceptions import Forbidden, BadRequest
 from google.auth.exceptions import RefreshError
 from burf.util import human_readable_bytes, RecentDict
@@ -48,7 +50,7 @@ class FileListView(ListView):
     ]
 
     showing_elems: reactive[List[Dir | Blob]] = reactive([])
-    position_cache: RecentDict(BucketWithPrefix, int) = RecentDict(10)
+    position_cache: RecentDict[BucketWithPrefix, int] = RecentDict(10)
 
     def __init__(
         self,
@@ -84,7 +86,7 @@ class FileListView(ListView):
 
     @uri.setter
     def uri(self, new_uri: BucketWithPrefix) -> None:
-        self.position_cache[self.uri] = self.index
+        self.position_cache[self.uri] = self.index or 0
         self._uri = new_uri
 
     def watch_showing_elems(

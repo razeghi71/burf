@@ -3,7 +3,7 @@ import os
 import argparse
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Label
+from textual.widgets import Header, Footer
 from textual.binding import Binding
 
 from burf.file_list_view import FileListView
@@ -11,7 +11,8 @@ from burf.search_box import SearchBox
 from burf.credentials_selector import CredentialsSelector
 from burf.credentials_provider import CredentialsProvider
 from burf.string_getter import StringGetter
-from burf.storage import GCS, BucketWithPrefix
+from burf.storage.storage import GCS
+from burf.storage.ds import BucketWithPrefix
 
 from google.oauth2 import service_account
 
@@ -29,6 +30,7 @@ class GSUtilUIApp(App[Any]):
         Binding("ctrl+p", "project_select", "select gcp project"),
         Binding("ctrl+g", "go_to", "go to address"),
         Binding("ctrl+d", "download", "download selected"),
+        Binding("ctrl+c", "quit", "Quit"),
     ]
 
     file_list_view: FileListView

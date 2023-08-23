@@ -1,7 +1,9 @@
-import math
-import re
-from burf.storage import BucketWithPrefix
+from burf.storage.ds import BucketWithPrefix
 from collections import OrderedDict
+from typing import Any, TypeVar, Generic
+
+import re
+import math
 
 
 def human_readable_bytes(size_in_bytes: int) -> str:
@@ -28,12 +30,16 @@ def get_gcs_bucket_and_prefix(gcs_uri: str) -> BucketWithPrefix:
     return BucketWithPrefix(bucket, prefix)
 
 
-class RecentDict(OrderedDict):
-    def __init__(self, max_elements, *args, **kwargs):
+K = TypeVar("K")
+V = TypeVar("V")
+
+
+class RecentDict(OrderedDict[K, V], Generic[K, V]):
+    def __init__(self, max_elements: int, *args: Any, **kwargs: Any) -> None:
         self.max_elements = max_elements
         super().__init__(*args, **kwargs)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: K, value: V) -> None:
         if len(self) >= self.max_elements:
             self.popitem(last=False)
         super().__setitem__(key, value)
