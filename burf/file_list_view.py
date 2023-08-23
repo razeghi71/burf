@@ -10,7 +10,6 @@ from textual.containers import Horizontal
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Label, ListItem, ListView
-from textual.widgets._list_item import ListItem
 
 from burf.storage.ds import BucketWithPrefix
 from burf.storage.paths import Blob, Dir
