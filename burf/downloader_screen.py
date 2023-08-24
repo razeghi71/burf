@@ -1,16 +1,16 @@
 import os
-import time
+import threading
 from typing import Iterator
-from textual import events
 
+from textual import events
 from textual.app import ComposeResult
+from textual.containers import Center, Middle
 from textual.screen import Screen
-from textual.widgets import Footer, Header, ProgressBar, Label
-from textual.containers import Middle, Center
+from textual.widgets import Footer, Header, Label, ProgressBar
 
 from burf.storage.ds import BucketWithPrefix
-from burf.storage.storage import Storage
 from burf.storage.paths import Blob
+from burf.storage.storage import Storage
 
 
 class Downloader:
@@ -30,7 +30,8 @@ class Downloader:
             destination_path = os.path.join(
                 destination_folder, blob.name[len(self._uri.prefix) :]
             )
-            os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+            # TODO: uncomment this and also put everything in the original bucket name
+            # os.makedirs(os.path.dirname(destination_path), exist_ok=True)
             self._storage.download_to_filename(blob, destination_path)
             yield blob
 
@@ -41,6 +42,12 @@ class DownloaderScreen(Screen[None]):
         ("escape", "app.pop_screen", "close"),
     ]
 
+    CSS = """
+        Label {
+            margin-bottom: 1;
+        }
+    """
+
     def __init__(
         self,
         download_uri: BucketWithPrefix,
@@ -49,23 +56,27 @@ class DownloaderScreen(Screen[None]):
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
-        print("hellllooooo")
         super().__init__(name, id, classes)
         self._downloader = Downloader(download_uri, storage)
 
-    def _on_mount(self, event: events.Mount) -> None:
-        super()._on_mount(event)
+    def update_progress(self):
         for blob in self._downloader.download(os.path.expanduser(".")):
             self.progress.advance(1)
-            self.label.renderable = f"Downloaded {blob.name}"
+            self.label.update(f"Downloaded {blob.name}")
+        self.label.update("Download Finished")
+
+    def _on_mount(self, event: events.Mount) -> None:
+        super()._on_mount(event)
+        threading.Thread(target=self.update_progress).start()
 
     def compose(self) -> ComposeResult:
         self.label = Label("Starting Download")
         self.progress = ProgressBar(total=self._downloader.number_of_blobs())
         yield Header()
-        with Center():
-            with Middle():
+
+        with Middle():
+            with Center():
                 yield self.label
-            with Middle():
+            with Center():
                 yield self.progress
         yield Footer()
