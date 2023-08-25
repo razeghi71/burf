@@ -107,15 +107,10 @@ class GSUtilUIApp(App[Any]):
         )
 
     def action_download(self) -> None:
-        self.push_screen(
-            DownloaderScreen(
-                BucketWithPrefix(
-                    self.file_list_view.uri.bucket_name,
-                    self.file_list_view.highlighted_child.name,
-                ),
-                self.storage,
-            )
-        )
+        selected = self.file_list_view.get_selected_uri()
+
+        if selected is not None:
+            self.push_screen(DownloaderScreen(selected, self.storage))
 
     # message handlers
     def on_input_submitted(self, value: SearchBox.Submitted) -> None:

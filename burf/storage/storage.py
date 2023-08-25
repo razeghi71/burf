@@ -1,20 +1,19 @@
-import time
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
 from google.auth.credentials import Credentials
 from google.cloud.storage import Client  # type: ignore
 
-from burf.storage.paths import Blob, Dir
+from burf.storage.paths import Blob, Prefix, Bucket
 
 
 class Storage(ABC):
     @abstractmethod
-    def list_buckets(self) -> List[Dir]:
+    def list_buckets(self) -> List[Bucket]:
         pass
 
     @abstractmethod
-    def list_prefix(self, bucket_name: str, prefix: str) -> List[Dir | Blob]:
+    def list_prefix(self, bucket_name: str, prefix: str) -> List[Blob | Prefix]:
         pass
 
     @abstractmethod
@@ -62,16 +61,16 @@ class GCS(Storage):
         else:
             self.client = Client(credentials=self.credentials)
 
-    def list_buckets(self) -> List[Dir]:
+    def list_buckets(self) -> List[Bucket]:
         buckets = self.client.list_buckets()
-        return [Dir(bucket.name) for bucket in buckets]
+        return [Bucket(bucket.name) for bucket in buckets]
 
-    def list_prefix(self, bucket_name: str, prefix: str) -> List[Dir | Blob]:
+    def list_prefix(self, bucket_name: str, prefix: str) -> List[Blob | Prefix]:
         blobs = self.client.bucket(bucket_name).list_blobs(delimiter="/", prefix=prefix)
         blob_list = list(blobs)
 
-        result = [Dir(subdir) for subdir in blobs.prefixes] + [
-            Blob(blob.name, blob.size, blob.updated) for blob in blob_list
+        result = [Prefix(subdir, bucket_name) for subdir in blobs.prefixes] + [
+            Blob(blob.name, blob.bucket, blob.size, blob.updated) for blob in blob_list
         ]
 
         sorted_result = sorted(result, key=lambda x: x.name)
@@ -80,7 +79,8 @@ class GCS(Storage):
 
     def list_all_blobs(self, bucket_name: str, prefix: str) -> List[Blob]:
         blobs = self.client.bucket(bucket_name).list_blobs(prefix=prefix)
-        return [Blob(blob.name, blob.size, blob.update) for blob in blobs]
+        return [Blob(blob.name, blob.bucket, blob.size, blob.update) for blob in blobs]
 
     def download_to_filename(self, blob: Blob, dest: str) -> None:
-        time.sleep(0.5)
+        pass
+        # self.client.download_blob_to_file(blob)

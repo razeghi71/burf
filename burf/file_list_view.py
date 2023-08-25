@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 from google.api_core.exceptions import BadRequest, Forbidden
 from google.auth.exceptions import RefreshError
@@ -12,7 +12,7 @@ from textual.reactive import reactive
 from textual.widgets import Label, ListItem, ListView
 
 from burf.storage.ds import BucketWithPrefix
-from burf.storage.paths import Blob, Dir
+from burf.storage.paths import Blob, Prefix, Bucket
 from burf.storage.storage import Storage
 from burf.util import RecentDict, human_readable_bytes
 
@@ -50,7 +50,7 @@ class FileListView(ListView):
         Binding("/", "search", "search"),
     ]
 
-    showing_elems: reactive[List[Dir | Blob]] = reactive([])
+    showing_elems: reactive[List[Prefix | Blob | Bucket]] = reactive([])
     position_cache: RecentDict[BucketWithPrefix, int] = RecentDict(10)
 
     def __init__(
@@ -91,7 +91,7 @@ class FileListView(ListView):
         self._uri = new_uri
 
     def watch_showing_elems(
-        self, _: List[Dir | Blob], new_showing_elems: List[Dir | Blob]
+        self, _: List[Prefix | Blob], new_showing_elems: List[Prefix | Blob]
     ) -> None:
         self.clear()
         self.index = 0
@@ -99,17 +99,17 @@ class FileListView(ListView):
         for showing_elem in new_showing_elems:
             row = []
             match showing_elem:
-                case Dir(name):
+                case Prefix(name, _):
                     pretty_name = Label(f"📂 {name}")
                     pretty_name.styles.width = "65%"
                     row.append(pretty_name)
-                case Blob(name, size, time_created):
+                case Blob(name, _, size, time_updated):
                     pretty_name = Label(f"📒 {name}")
                     pretty_name.styles.width = "65%"
 
                     bg_color = self.background_colors[0]
 
-                    time_label = Label(time_created.strftime("%Y-%m-%d %H:%M:%S.%f"))
+                    time_label = Label(time_updated.strftime("%Y-%m-%d %H:%M:%S.%f"))
                     time_label.styles.width = "25%"
                     time_label.styles.background = Color.lighten(bg_color, 0.2)
 
@@ -152,16 +152,19 @@ class FileListView(ListView):
 
     def refresh_contents(self) -> bool:
         try:
+            new_showing_elem: List[Bucket | Prefix | Blob] = []
             if not self.uri.bucket_name:
                 path = f"list of buckets in project: ({self.storage.get_project()})"
-                new_showing_elem: List[Dir | Blob] = []
                 new_showing_elem.extend(self.storage.list_buckets())
                 self.showing_elems = new_showing_elem
             else:
                 path = "gs://" + str(self.uri)
-                self.showing_elems = self.storage.list_prefix(
-                    bucket_name=self.uri.bucket_name, prefix=self.uri.prefix
+                new_showing_elem.extend(
+                    self.storage.list_prefix(
+                        bucket_name=self.uri.bucket_name, prefix=self.uri.prefix
+                    )
                 )
+                self.showing_elems = new_showing_elem
             self.app.title = path
             return True
         except Forbidden:
@@ -191,3 +194,13 @@ class FileListView(ListView):
             if child.name and value in child.name:
                 self.index = (i + index + 1) % len(self.children)
                 return
+
+    def get_current_uri(self) -> BucketWithPrefix:
+        return self.uri
+
+    def get_selected_uri(self) -> Optional[BucketWithPrefix]:
+        if self.highlighted_child is None:
+            return None
+        if self.highlighted_child.name is None:
+            return None
+        return BucketWithPrefix(self.uri.bucket_name, self.highlighted_child.name)

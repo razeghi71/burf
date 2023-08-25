@@ -59,7 +59,7 @@ class DownloaderScreen(Screen[None]):
         super().__init__(name, id, classes)
         self._downloader = Downloader(download_uri, storage)
 
-    def update_progress(self):
+    def update_progress(self) -> None:
         for blob in self._downloader.download(os.path.expanduser(".")):
             self.progress.advance(1)
             self.label.update(f"Downloaded {blob.name}")
