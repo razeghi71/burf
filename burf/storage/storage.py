@@ -6,6 +6,8 @@ from google.cloud.storage import Client  # type: ignore
 
 from burf.storage.paths import Blob, Prefix, Bucket
 
+import time
+
 
 class Storage(ABC):
     @abstractmethod
@@ -82,5 +84,5 @@ class GCS(Storage):
         return [Blob(blob.name, blob.bucket, blob.size, blob.update) for blob in blobs]
 
     def download_to_filename(self, blob: Blob, dest: str) -> None:
-        pass
+        time.sleep(0.5)
         # self.client.download_blob_to_file(blob)

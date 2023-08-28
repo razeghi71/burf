@@ -94,9 +94,9 @@ class CredentialsSelector(Screen[Optional[service_account.Credentials]]):
         if event.button.name == "ok":
             pressed = self.radio_set.pressed_button
             if pressed:
-                for service_account in self.service_accounts:
-                    if service_account.service_account_email == pressed.name:
-                        self.dismiss(service_account)
+                for sa in self.service_accounts:
+                    if sa.service_account_email == pressed.name:
+                        self.dismiss(sa)
                         return
         elif event.button.name == "close":
             self.dismiss(None)

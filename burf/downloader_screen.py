@@ -4,9 +4,9 @@ from typing import Iterator
 
 from textual import events
 from textual.app import ComposeResult
-from textual.containers import Center, Middle
+from textual.containers import Center, Middle, Horizontal, Container
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Label, ProgressBar
+from textual.widgets import Footer, Header, Label, ProgressBar, Button
 
 from burf.storage.ds import BucketWithPrefix
 from burf.storage.paths import Blob
@@ -17,6 +17,10 @@ class Downloader:
     def __init__(self, uri: BucketWithPrefix, storage: Storage) -> None:
         self._uri = uri
         self._storage = storage
+
+    @property
+    def uri(self) -> BucketWithPrefix:
+        return self._uri
 
     def number_of_blobs(self) -> int:
         return len(
@@ -43,8 +47,18 @@ class DownloaderScreen(Screen[None]):
     ]
 
     CSS = """
-        Label {
+        #download-info {
             margin-bottom: 1;
+        }
+        #downloader {
+            display: none;
+            padding-top: 2; 
+        }
+        #question {
+            padding-top: 2;
+        }
+        #horizontal {
+            padding-top: 1;
         }
     """
 
@@ -65,18 +79,35 @@ class DownloaderScreen(Screen[None]):
             self.label.update(f"Downloaded {blob.name}")
         self.label.update("Download Finished")
 
-    def _on_mount(self, event: events.Mount) -> None:
-        super()._on_mount(event)
-        threading.Thread(target=self.update_progress).start()
-
     def compose(self) -> ComposeResult:
-        self.label = Label("Starting Download")
+        self.label = Label("Starting Download", id="download-info")
         self.progress = ProgressBar(total=self._downloader.number_of_blobs())
+        download_to = os.getcwd()
+
         yield Header()
 
-        with Middle():
+        with Container(id="question"):
+            with Center():
+                yield Label(
+                    f"Proceed Downloading {self._downloader.uri} => {download_to}"
+                )
+
+            with Horizontal(id="horizontal"):
+                with Center():
+                    yield Button("Yes", id="yes")
+                    yield Button("No", id="no")
+
+        with Middle(id="downloader"):
             with Center():
                 yield self.label
             with Center():
                 yield self.progress
         yield Footer()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "yes":
+            self.query_one("#question").styles.display = "none"
+            self.query_one("#downloader").styles.display = "block"
+            threading.Thread(target=self.update_progress).start()
+        else:
+            self.dismiss()
