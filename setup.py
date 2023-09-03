@@ -2,8 +2,8 @@ from setuptools import setup
 
 setup(
     name="burf",
-    version="1.2.0",
-    packages=["burf"],
+    version="1.2.1",
+    packages=["burf", "burf.storage"],
     install_requires=["textual==0.28.1", "google-cloud-storage==2.10.0"],
     entry_points={"console_scripts": ["burf=burf.burf:main"]},
     author="Mohammad Razeghi",
