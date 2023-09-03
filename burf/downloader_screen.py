@@ -18,8 +18,8 @@ class Downloader:
         uri: BucketWithPrefix,
         storage: Storage,
         destination: str,
-        call_before_each_object: Callable[[BucketWithPrefix], Any],
-        call_after_each_object: Callable[[BucketWithPrefix], Any],
+        call_before_each_object: Callable[[BucketWithPrefix, str], Any],
+        call_after_each_object: Callable[[BucketWithPrefix, str], Any],
     ) -> None:
         self.uri = uri
         self.stopped = False
@@ -35,7 +35,7 @@ class Downloader:
     def number_of_blobs(self) -> int:
         return len(self._storage.list_all_blobs(self.uri))
 
-    def download(self):
+    def download(self) -> None:
         blobs = self._storage.list_all_blobs(self.uri)
         for blob in blobs:
             if not self.stopped:
