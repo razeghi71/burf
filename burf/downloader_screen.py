@@ -1,7 +1,7 @@
 import os
 import threading
 from enum import Enum
-from typing import Iterator, Callable, Any
+from typing import Callable, Any
 
 from textual.app import ComposeResult
 from textual.containers import Center, Container, Horizontal, Middle
@@ -119,9 +119,8 @@ class DownloaderScreen(Screen[None]):
 
         with Container(id="question"):
             with Center():
-                self.question_label = Label(
-                    f"Proceed Downloading {self._downloader.uri} => {self._downloader.destination}"
-                )
+                q = f"Proced Downeloading {self._downloader.uri} => {self._downloader.destination}"
+                self.question_label = Label(q)
                 yield self.question_label
 
             with Horizontal(id="horizontal"):
