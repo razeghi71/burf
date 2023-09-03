@@ -6,8 +6,6 @@ from google.cloud.storage import Client  # type: ignore
 
 from burf.storage.ds import BucketWithPrefix
 
-import time
-
 
 class Storage(ABC):
     @abstractmethod
