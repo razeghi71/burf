@@ -74,30 +74,32 @@ class GCS(Storage):
 
         blob_list = list(blobs)
 
-        result = [
-            BucketWithPrefix(
-                bucket_name=uri.bucket_name,
-                prefix=subdir,
-            )
-            for subdir in blobs.prefixes
-        ] + [
-            BucketWithPrefix(
-                bucket_name=blob.bucket.name,
-                prefix=blob.name,
-                is_blob=True,
-                size=blob.size,
-                updated_at=blob.updated,
-            )
-            for blob in blob_list
-        ]
-
-        return result
+        return sorted(
+            [
+                BucketWithPrefix(
+                    bucket_name=uri.bucket_name,
+                    prefix=subdir,
+                )
+                for subdir in blobs.prefixes
+            ]
+            + [
+                BucketWithPrefix(
+                    bucket_name=blob.bucket.name,
+                    prefix=blob.name,
+                    is_blob=True,
+                    size=blob.size,
+                    updated_at=blob.updated,
+                )
+                for blob in blob_list
+            ],
+            key=lambda x: x.full_prefix,
+        )
 
     def list_all_blobs(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
         blobs = self.client.bucket(uri.bucket_name).list_blobs(prefix=uri.full_prefix)
         return [
             BucketWithPrefix(
-                bucket_name=blob.bucket,
+                bucket_name=blob.bucket.name,
                 prefix=blob.name,
                 is_blob=True,
                 size=blob.size,

@@ -16,22 +16,12 @@ class Downloader:
     def __init__(
         self, uri: BucketWithPrefix, storage: Storage, destination: str
     ) -> None:
-        self._uri = uri
+        self.uri = uri
+        self.stopped = False
         self._storage = storage
-        self._stopped = False
-        self._destination = destination
-
-    @property
-    def uri(self) -> BucketWithPrefix:
-        return self._uri
-
-    @property
-    def stopped(self) -> bool:
-        return self._stopped
-
-    @stopped.setter
-    def stopped(self, new: bool) -> None:
-        self._stopped = new
+        self.destination = destination
+        if not uri.is_blob:
+            self.destination = self.destination + "/" + uri.get_last_part_of_address()
 
     def number_of_blobs(self) -> int:
         return len(self._storage.list_all_blobs(self.uri))
@@ -41,10 +31,9 @@ class Downloader:
         for blob in blobs:
             if not self.stopped:
                 destination_path = os.path.join(
-                    self._destination, blob.full_prefix[len(self.uri.full_prefix) :]
+                    self.destination, blob.full_prefix[len(self.uri.full_prefix) :]
                 )
-                # TODO: uncomment this and also put everything in the original bucket name
-                # os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+                os.makedirs(os.path.dirname(destination_path), exist_ok=True)
                 self._storage.download_to_filename(blob, destination_path)
                 yield blob
             else:
@@ -107,7 +96,7 @@ class DownloaderScreen(Screen[None]):
         with Container(id="question"):
             with Center():
                 self.question_label = Label(
-                    f"Proceed Downloading {self._downloader.uri} => {self._download_to}"
+                    f"Proceed Downloading {self._downloader.uri} => {self._downloader.destination}"
                 )
                 yield self.question_label
 

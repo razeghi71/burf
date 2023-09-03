@@ -43,7 +43,7 @@ class BucketWithPrefix:
         return self.bucket_name + "/" + self.full_prefix
 
     @property
-    def is_bucket(self):
+    def is_bucket(self) -> bool:
         return len(self.prefixes) == 0
 
     def parent(self) -> BucketWithPrefix:
@@ -53,6 +53,11 @@ class BucketWithPrefix:
             return BucketWithPrefix("", [])
         else:
             return BucketWithPrefix(self.bucket_name, self.prefixes[:-1])
+
+    def get_last_part_of_address(self) -> str:
+        if self.is_bucket:
+            return self.bucket_name
+        return self.prefixes[-1]
 
     def __str__(self) -> str:
         return self.full_path
