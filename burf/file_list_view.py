@@ -12,7 +12,6 @@ from textual.reactive import reactive
 from textual.widgets import Label, ListItem, ListView
 
 from burf.storage.ds import BucketWithPrefix
-from burf.storage.paths import Blob, Prefix, Bucket
 from burf.storage.storage import Storage
 from burf.util import RecentDict, human_readable_bytes
 
@@ -50,13 +49,13 @@ class FileListView(ListView):
         Binding("/", "search", "search"),
     ]
 
-    showing_elems: reactive[List[Prefix | Blob | Bucket]] = reactive([])
+    showing_elems: reactive[List[BucketWithPrefix]] = reactive([])
     position_cache: RecentDict[BucketWithPrefix, int] = RecentDict(10)
 
     def __init__(
         self,
         storage: Storage,
-        uri: BucketWithPrefix = BucketWithPrefix("", ""),
+        uri: BucketWithPrefix = BucketWithPrefix("", []),
         *children: ListItem,
         initial_index: int | None = 0,
         name: str | None = None,
@@ -91,42 +90,52 @@ class FileListView(ListView):
         self._uri = new_uri
 
     def watch_showing_elems(
-        self, _: List[Prefix | Blob], new_showing_elems: List[Prefix | Blob]
+        self, _: List[BucketWithPrefix], new_showing_elems: List[BucketWithPrefix]
     ) -> None:
         self.clear()
         self.index = 0
 
         for showing_elem in new_showing_elems:
             row = []
-            match showing_elem:
-                case Prefix(name, _):
-                    pretty_name = Label(f"📂 {name}")
-                    pretty_name.styles.width = "65%"
-                    row.append(pretty_name)
-                case Blob(name, _, size, time_updated):
-                    pretty_name = Label(f"📒 {name}")
-                    pretty_name.styles.width = "65%"
+            if showing_elem.is_bucket:
+                pretty_name = Label(f"📦 {showing_elem.bucket_name}")
+            elif not showing_elem.is_blob:
+                pretty_name = Label(f"📂 {showing_elem.full_prefix}")
+            else:
+                pretty_name = Label(f"📒 {showing_elem.full_prefix}")
 
-                    bg_color = self.background_colors[0]
+            row.append(pretty_name)
+            if showing_elem.is_blob:
+                pretty_name.styles.width = "65%"
+                bg_color = self.background_colors[0]
 
-                    time_label = Label(time_updated.strftime("%Y-%m-%d %H:%M:%S.%f"))
-                    time_label.styles.width = "25%"
-                    time_label.styles.background = Color.lighten(bg_color, 0.2)
+                if showing_elem.updated_at is not None:
+                    time_label = Label(
+                        showing_elem.updated_at.strftime("%Y-%m-%d %H:%M:%S.%f")
+                    )
+                else:
+                    time_label = Label("")
+                time_label.styles.width = "25%"
+                time_label.styles.background = Color.lighten(bg_color, 0.2)
 
-                    size_label = Label(human_readable_bytes(size))
-                    size_label.styles.width = "10%"
-                    size_label.styles.background = Color.lighten(bg_color, 0.1)
+                if showing_elem.size is not None:
+                    size_label = Label(human_readable_bytes(showing_elem.size))
+                else:
+                    size_label = Label("")
+                size_label.styles.width = "10%"
+                size_label.styles.background = Color.lighten(bg_color, 0.1)
 
-                    row.append(pretty_name)
-                    row.append(time_label)
-                    row.append(size_label)
+                row.append(time_label)
+                row.append(size_label)
 
             self.append(
                 ListItem(
                     Horizontal(
                         *row,
                     ),
-                    name=showing_elem.name,
+                    name=showing_elem.bucket_name
+                    if showing_elem.is_bucket
+                    else showing_elem.full_prefix,
                 )
             )
 
@@ -139,12 +148,11 @@ class FileListView(ListView):
 
     def on_list_view_selected(self, selected: ListView.Selected) -> None:
         selected_name = selected.item.name or ""
-        if selected_name == "":
-            return
+
         if self.uri.bucket_name != "" and selected_name[-1] != "/":
             return
         elif self.uri.bucket_name == "":
-            self.uri = BucketWithPrefix(selected_name, self.uri.prefix)
+            self.uri = BucketWithPrefix(selected_name, [])
         else:
             self.uri = BucketWithPrefix(self.uri.bucket_name, selected_name)
 
@@ -152,19 +160,12 @@ class FileListView(ListView):
 
     def refresh_contents(self) -> bool:
         try:
-            new_showing_elem: List[Bucket | Prefix | Blob] = []
             if not self.uri.bucket_name:
                 path = f"list of buckets in project: ({self.storage.get_project()})"
-                new_showing_elem.extend(self.storage.list_buckets())
-                self.showing_elems = new_showing_elem
+                self.showing_elems = self.storage.list_buckets()
             else:
                 path = "gs://" + str(self.uri)
-                new_showing_elem.extend(
-                    self.storage.list_prefix(
-                        bucket_name=self.uri.bucket_name, prefix=self.uri.prefix
-                    )
-                )
-                self.showing_elems = new_showing_elem
+                self.showing_elems = self.storage.list_prefix(uri=self.uri)
             self.app.title = path
             return True
         except Forbidden:
@@ -203,4 +204,10 @@ class FileListView(ListView):
             return None
         if self.highlighted_child.name is None:
             return None
-        return BucketWithPrefix(self.uri.bucket_name, self.highlighted_child.name)
+        if self.uri.bucket_name is None:
+            return BucketWithPrefix(self.highlighted_child.name, None)
+        else:
+            return BucketWithPrefix(
+                self.uri.bucket_name,
+                self.highlighted_child.name,
+            )

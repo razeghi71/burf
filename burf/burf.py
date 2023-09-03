@@ -144,7 +144,7 @@ def main() -> Any | None:
     if args.gcs_uri:
         uri = get_gcs_bucket_and_prefix(args.gcs_uri)
     else:
-        uri = BucketWithPrefix("", "")
+        uri = BucketWithPrefix("", [])
 
     config_file = args.config
     gcp_project = args.project

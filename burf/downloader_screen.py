@@ -9,39 +9,39 @@ from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Label, ProgressBar
 
 from burf.storage.ds import BucketWithPrefix
-from burf.storage.paths import Blob
 from burf.storage.storage import Storage
 
 
 class Downloader:
-    def __init__(self, uri: BucketWithPrefix, storage: Storage) -> None:
+    def __init__(
+        self, uri: BucketWithPrefix, storage: Storage, destination: str
+    ) -> None:
         self._uri = uri
         self._storage = storage
         self._stopped = False
+        self._destination = destination
 
     @property
     def uri(self) -> BucketWithPrefix:
         return self._uri
 
     @property
-    def stopped(self):
+    def stopped(self) -> bool:
         return self._stopped
 
     @stopped.setter
-    def stopped(self, new):
+    def stopped(self, new: bool) -> None:
         self._stopped = new
 
     def number_of_blobs(self) -> int:
-        return len(
-            self._storage.list_all_blobs(self._uri.bucket_name, self._uri.prefix)
-        )
+        return len(self._storage.list_all_blobs(self.uri))
 
-    def download(self, destination_folder: str) -> Iterator[Blob]:
-        blobs = self._storage.list_all_blobs(self._uri.bucket_name, self._uri.prefix)
+    def download(self) -> Iterator[BucketWithPrefix]:
+        blobs = self._storage.list_all_blobs(self.uri)
         for blob in blobs:
             if not self.stopped:
                 destination_path = os.path.join(
-                    destination_folder, blob.name[len(self._uri.prefix) :]
+                    self._destination, blob.full_prefix[len(self.uri.full_prefix) :]
                 )
                 # TODO: uncomment this and also put everything in the original bucket name
                 # os.makedirs(os.path.dirname(destination_path), exist_ok=True)
@@ -82,31 +82,32 @@ class DownloaderScreen(Screen[None]):
         self,
         download_uri: BucketWithPrefix,
         storage: Storage,
+        download_to: str = os.getcwd(),
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
         super().__init__(name, id, classes)
-        self._downloader = Downloader(download_uri, storage)
+        self._download_to = download_to
+        self._downloader = Downloader(download_uri, storage, self._download_to)
         self.state = State.STOPPED
 
     def start_download(self) -> None:
-        for blob in self._downloader.download("."):
+        for blob in self._downloader.download():
             self.progress.advance(1)
-            self.label.update(f"Downloaded {blob.name}")
+            self.label.update(f"Downloaded {blob}")
         self.label.update("Download Finished")
 
     def compose(self) -> ComposeResult:
         self.label = Label("Starting Download", id="download-info")
         self.progress = ProgressBar(total=self._downloader.number_of_blobs())
-        download_to = os.getcwd()
 
         yield Header()
 
         with Container(id="question"):
             with Center():
                 self.question_label = Label(
-                    f"Proceed Downloading {self._downloader.uri} => {download_to}"
+                    f"Proceed Downloading {self._downloader.uri} => {self._download_to}"
                 )
                 yield self.question_label
 
@@ -122,7 +123,7 @@ class DownloaderScreen(Screen[None]):
                 yield self.progress
         yield Footer()
 
-    def action_close(self):
+    def action_close(self) -> None:
         if self.state == State.STARTED:
             self.query_one("#question").styles.display = "block"
             self.question_label.update("Do you want to stop the download?")

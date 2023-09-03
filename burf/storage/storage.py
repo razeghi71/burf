@@ -4,22 +4,22 @@ from typing import List, Optional
 from google.auth.credentials import Credentials
 from google.cloud.storage import Client  # type: ignore
 
-from burf.storage.paths import Blob, Prefix, Bucket
+from burf.storage.ds import BucketWithPrefix
 
 import time
 
 
 class Storage(ABC):
     @abstractmethod
-    def list_buckets(self) -> List[Bucket]:
+    def list_buckets(self) -> List[BucketWithPrefix]:
         pass
 
     @abstractmethod
-    def list_prefix(self, bucket_name: str, prefix: str) -> List[Blob | Prefix]:
+    def list_prefix(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
         pass
 
     @abstractmethod
-    def list_all_blobs(self, bucket_name: str, prefix: str) -> List[Blob]:
+    def list_all_blobs(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
         pass
 
     @abstractmethod
@@ -27,7 +27,7 @@ class Storage(ABC):
         pass
 
     @abstractmethod
-    def download_to_filename(self, blob: Blob, dest: str) -> None:
+    def download_to_filename(self, uri: BucketWithPrefix, dest: str) -> None:
         pass
 
 
@@ -63,26 +63,49 @@ class GCS(Storage):
         else:
             self.client = Client(credentials=self.credentials)
 
-    def list_buckets(self) -> List[Bucket]:
+    def list_buckets(self) -> List[BucketWithPrefix]:
         buckets = self.client.list_buckets()
-        return [Bucket(bucket.name) for bucket in buckets]
+        return [BucketWithPrefix(bucket.name, []) for bucket in buckets]
 
-    def list_prefix(self, bucket_name: str, prefix: str) -> List[Blob | Prefix]:
-        blobs = self.client.bucket(bucket_name).list_blobs(delimiter="/", prefix=prefix)
+    def list_prefix(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
+        blobs = self.client.bucket(uri.bucket_name).list_blobs(
+            delimiter="/", prefix=uri.full_prefix
+        )
+
         blob_list = list(blobs)
 
-        result = [Prefix(subdir, bucket_name) for subdir in blobs.prefixes] + [
-            Blob(blob.name, blob.bucket, blob.size, blob.updated) for blob in blob_list
+        result = [
+            BucketWithPrefix(
+                bucket_name=uri.bucket_name,
+                prefix=subdir,
+            )
+            for subdir in blobs.prefixes
+        ] + [
+            BucketWithPrefix(
+                bucket_name=blob.bucket.name,
+                prefix=blob.name,
+                is_blob=True,
+                size=blob.size,
+                updated_at=blob.updated,
+            )
+            for blob in blob_list
         ]
 
-        sorted_result = sorted(result, key=lambda x: x.name)
+        return result
 
-        return sorted_result
+    def list_all_blobs(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
+        blobs = self.client.bucket(uri.bucket_name).list_blobs(prefix=uri.full_prefix)
+        return [
+            BucketWithPrefix(
+                bucket_name=blob.bucket,
+                prefix=blob.name,
+                is_blob=True,
+                size=blob.size,
+                updated_at=blob.update,
+            )
+            for blob in blobs
+        ]
 
-    def list_all_blobs(self, bucket_name: str, prefix: str) -> List[Blob]:
-        blobs = self.client.bucket(bucket_name).list_blobs(prefix=prefix)
-        return [Blob(blob.name, blob.bucket, blob.size, blob.update) for blob in blobs]
-
-    def download_to_filename(self, blob: Blob, dest: str) -> None:
+    def download_to_filename(self, uri: BucketWithPrefix, dest: str) -> None:
         time.sleep(0.5)
         # self.client.download_blob_to_file(blob)
