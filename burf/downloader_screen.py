@@ -119,7 +119,12 @@ class DownloaderScreen(Screen[None]):
 
         with Container(id="question"):
             with Center():
-                q = f"Proced Downeloading {self._downloader.uri} => {self._downloader.destination}"
+                q = (
+                    "Proced Downloading"
+                    f"{self._downloader.uri}"
+                    "=>"
+                    f" {self._downloader.destination}"
+                )
                 self.question_label = Label(q)
                 yield self.question_label
 
