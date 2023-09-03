@@ -109,5 +109,8 @@ class GCS(Storage):
         ]
 
     def download_to_filename(self, uri: BucketWithPrefix, dest: str) -> None:
-        time.sleep(0.5)
-        # self.client.download_blob_to_file(blob)
+        print(f"Downloading {uri} to {dest}")
+        blob = self.client.bucket(uri.bucket_name).blob(uri.full_prefix)
+
+        if blob.exists():
+            blob.download_to_filename(dest)

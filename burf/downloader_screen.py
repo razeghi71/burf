@@ -21,7 +21,9 @@ class Downloader:
         self._storage = storage
         self.destination = destination
         if not uri.is_blob:
-            self.destination = self.destination + "/" + uri.get_last_part_of_address()
+            self.destination = os.path.join(
+                self.destination, uri.get_last_part_of_address()
+            )
 
     def number_of_blobs(self) -> int:
         return len(self._storage.list_all_blobs(self.uri))
@@ -31,7 +33,7 @@ class Downloader:
         for blob in blobs:
             if not self.stopped:
                 destination_path = os.path.join(
-                    self.destination, blob.full_prefix[len(self.uri.full_prefix) :]
+                    self.destination, blob.get_last_part_of_address()
                 )
                 os.makedirs(os.path.dirname(destination_path), exist_ok=True)
                 self._storage.download_to_filename(blob, destination_path)
