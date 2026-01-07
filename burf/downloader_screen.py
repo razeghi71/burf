@@ -44,7 +44,6 @@ class Downloader:
     def download(self) -> None:
         blobs = self.list_blobs()
         base_prefix = self.uri.full_prefix if not self.uri.is_blob else ""
-        destination_root_abs = os.path.abspath(self.destination)
         for blob in blobs:
             if not self.stopped:
                 if base_prefix and blob.full_prefix.startswith(base_prefix):
@@ -52,29 +51,7 @@ class Downloader:
                 else:
                     rel_path = blob.get_last_part_of_address()
 
-                # SECURITY: GCS blob names are untrusted input and can contain path traversal
-                # components like "../". Sanitize the relative path so downloads cannot escape
-                # the chosen destination directory.
-                rel_path = rel_path.lstrip("/\\")
-                safe_parts: list[str] = []
-                for part in rel_path.split("/"):
-                    if part in ("", "."):
-                        continue
-                    if part == "..":
-                        safe_parts.append("__")
-                    else:
-                        safe_parts.append(part)
-                safe_rel_path = os.path.join(*safe_parts) if safe_parts else blob.get_last_part_of_address()
-
-                destination_path = os.path.join(self.destination, safe_rel_path)
-                # Defense-in-depth: ensure the final path stays under destination.
-                destination_abs = os.path.abspath(destination_path)
-                if destination_abs != destination_root_abs and not destination_abs.startswith(
-                    destination_root_abs + os.sep
-                ):
-                    destination_path = os.path.join(
-                        self.destination, blob.get_last_part_of_address()
-                    )
+                destination_path = os.path.join(self.destination, rel_path)
 
                 destination_dir = os.path.dirname(destination_path)
                 if destination_dir:
