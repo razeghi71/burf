@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import threading
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from google.api_core.exceptions import BadRequest, Forbidden
@@ -14,6 +17,12 @@ from textual.widgets import Label, ListItem, ListView
 from burf.storage.ds import BucketWithPrefix
 from burf.storage.storage import Storage
 from burf.util import RecentDict, human_readable_bytes
+
+
+@dataclass(frozen=True)
+class _ListingCacheEntry:
+    elems: List[BucketWithPrefix]
+    fetched_at: datetime
 
 
 class FileListView(ListView):
@@ -74,6 +83,11 @@ class FileListView(ListView):
 
         self._storage = storage
         self._uri = uri
+        self._listing_cache: RecentDict[BucketWithPrefix, _ListingCacheEntry] = RecentDict(
+            25
+        )
+        self._refresh_token = 0
+        self._in_flight_refreshes: set[BucketWithPrefix] = set()
         self.refresh_contents()
 
     @property
@@ -171,14 +185,121 @@ class FileListView(ListView):
 
         self.refresh_contents()
 
+    @staticmethod
+    def _listing_signature(elems: List[BucketWithPrefix]) -> tuple[tuple[str, bool, int | None, str | None], ...]:
+        """Signature that includes metadata so refresh detects updates.
+
+        We include size and updated_at since `BucketWithPrefix.__eq__` intentionally
+        ignores them.
+        """
+        sig: list[tuple[str, bool, int | None, str | None]] = []
+        for e in elems:
+            updated = e.updated_at
+            updated_s = (
+                updated.astimezone(timezone.utc).isoformat()
+                if updated is not None
+                else None
+            )
+            sig.append((e.full_path, e.is_blob, e.size, updated_s))
+        return tuple(sig)
+
+    def _start_background_refresh(self, uri_snapshot: BucketWithPrefix, path: str, token: int) -> None:
+        # Avoid piling up refresh threads for the same URI.
+        if uri_snapshot in self._in_flight_refreshes:
+            return
+        self._in_flight_refreshes.add(uri_snapshot)
+
+        def _worker() -> None:
+            try:
+                if not uri_snapshot.bucket_name:
+                    refreshed = self.storage.list_buckets()
+                else:
+                    refreshed = self.storage.list_prefix(uri=uri_snapshot)
+
+                refreshed_sig = self._listing_signature(refreshed)
+
+                def _apply() -> None:
+                    try:
+                        # Drop results if the user navigated elsewhere since we started.
+                        if token != self._refresh_token or self.uri != uri_snapshot:
+                            return
+
+                        cached = self._listing_cache.get(uri_snapshot)
+                        cached_sig = (
+                            self._listing_signature(cached.elems) if cached is not None else None
+                        )
+
+                        if cached_sig != refreshed_sig:
+                            self._listing_cache[uri_snapshot] = _ListingCacheEntry(
+                                elems=refreshed,
+                                fetched_at=datetime.now(timezone.utc),
+                            )
+                            self.showing_elems = refreshed
+
+                        self.app.title = path
+                    finally:
+                        self._in_flight_refreshes.discard(uri_snapshot)
+
+                self.app.call_from_thread(_apply)
+
+            except Forbidden:
+                self.app.call_from_thread(
+                    self.app.post_message, self.AccessForbidden(self, path)
+                )
+                self._in_flight_refreshes.discard(uri_snapshot)
+            except RefreshError:
+                self.app.call_from_thread(
+                    self.app.post_message, self.AccessForbidden(self, path)
+                )
+                self._in_flight_refreshes.discard(uri_snapshot)
+            except BadRequest as e:
+                errors = getattr(e, "errors", None) or []
+                for error in errors:
+                    message = ""
+                    if isinstance(error, dict):
+                        message = str(error.get("message", ""))
+                    if "Invalid project" in message:
+                        self.app.call_from_thread(
+                            self.app.post_message,
+                            self.InvalidProject(self, self.storage.get_project()),
+                        )
+                        break
+                self._in_flight_refreshes.discard(uri_snapshot)
+            except Exception:
+                # Best effort: keep cached contents on unexpected background errors.
+                self._in_flight_refreshes.discard(uri_snapshot)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
     def refresh_contents(self) -> bool:
+        # Increment token so any prior background refresh won't clobber this view.
+        self._refresh_token += 1
+        token = self._refresh_token
+
+        uri_snapshot = self.uri
+
+        if not uri_snapshot.bucket_name:
+            path = f"list of buckets in project: ({self.storage.get_project()})"
+        else:
+            path = "gs://" + str(uri_snapshot)
+
+        cached = self._listing_cache.get(uri_snapshot)
+        if cached is not None:
+            # Render instantly from cache, then refresh in the background.
+            self.showing_elems = cached.elems
+            self.app.title = path
+            self._start_background_refresh(uri_snapshot=uri_snapshot, path=path, token=token)
+            return True
+
         try:
-            if not self.uri.bucket_name:
-                path = f"list of buckets in project: ({self.storage.get_project()})"
+            if not uri_snapshot.bucket_name:
                 self.showing_elems = self.storage.list_buckets()
             else:
-                path = "gs://" + str(self.uri)
-                self.showing_elems = self.storage.list_prefix(uri=self.uri)
+                self.showing_elems = self.storage.list_prefix(uri=uri_snapshot)
+            self._listing_cache[uri_snapshot] = _ListingCacheEntry(
+                elems=self.showing_elems,
+                fetched_at=datetime.now(timezone.utc),
+            )
             self.app.title = path
             return True
         except Forbidden:
@@ -199,6 +320,13 @@ class FileListView(ListView):
         self.showing_elems = []
         self.app.title = path
         return False
+
+    def clear_cache(self) -> None:
+        """Clear cached listings (e.g. after changing auth/project)."""
+        self._listing_cache.clear()
+        self._in_flight_refreshes.clear()
+        # Bump token so any in-flight refresh won't apply.
+        self._refresh_token += 1
 
     def action_search(self) -> None:
         self.app.query_one("#search_box").focus()

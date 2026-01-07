@@ -48,6 +48,7 @@ class GSUtilUIApp(App[Any]):
     def change_project(self, project: Optional[str]) -> None:
         if project is not None:
             self.storage.set_project(project)
+            self.file_list_view.clear_cache()
             self.file_list_view.refresh_contents()
 
     def change_addr(self, new_addr: Optional[str]) -> None:
