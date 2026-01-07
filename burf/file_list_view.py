@@ -13,6 +13,7 @@ from textual.widgets import Label, ListItem, ListView
 
 from burf.storage.ds import BucketWithPrefix
 from burf.storage.storage import Storage
+from burf.listing_service import ListingService
 from burf.util import RecentDict, human_readable_bytes
 
 
@@ -73,7 +74,9 @@ class FileListView(ListView):
         )
 
         self._storage = storage
+        self._listing_service = ListingService(storage)
         self._uri = uri
+        self._refresh_token = 0
         self.refresh_contents()
 
     @property
@@ -171,14 +174,76 @@ class FileListView(ListView):
 
         self.refresh_contents()
 
+    def _apply_refreshed_listing(
+        self,
+        *,
+        uri_snapshot: BucketWithPrefix,
+        token: int,
+        elems: List[BucketWithPrefix],
+        path: str,
+    ) -> None:
+        if token != self._refresh_token or self.uri != uri_snapshot:
+            return
+        self.showing_elems = elems
+        self.app.title = path
+
+    def _handle_background_error(
+        self, *, uri_snapshot: BucketWithPrefix, token: int, exc: BaseException, path: str
+    ) -> None:
+        if token != self._refresh_token or self.uri != uri_snapshot:
+            return
+        if isinstance(exc, Forbidden) or isinstance(exc, RefreshError):
+            self.app.post_message(self.AccessForbidden(self, path))
+            return
+        if isinstance(exc, BadRequest):
+            errors = getattr(exc, "errors", None) or []
+            for error in errors:
+                message = ""
+                if isinstance(error, dict):
+                    message = str(error.get("message", ""))
+                if "Invalid project" in message:
+                    self.app.post_message(self.InvalidProject(self, self.storage.get_project()))
+                    return
+        # For other background errors, keep existing contents (best-effort).
+
     def refresh_contents(self) -> bool:
+        # Increment token so any prior background refresh won't clobber this view.
+        self._refresh_token += 1
+        token = self._refresh_token
+
+        uri_snapshot = self.uri
+
+        if not uri_snapshot.bucket_name:
+            path = f"list of buckets in project: ({self.storage.get_project()})"
+        else:
+            path = "gs://" + str(uri_snapshot)
+
+        cached = self._listing_service.get_cached(uri_snapshot)
+        if cached is not None:
+            # Render instantly from cache, then refresh in the background.
+            self.showing_elems = cached
+            self.app.title = path
+            self._listing_service.refresh_async(
+                uri_snapshot,
+                on_success=lambda elems: self.app.call_from_thread(
+                    self._apply_refreshed_listing,
+                    uri_snapshot=uri_snapshot,
+                    token=token,
+                    elems=elems,
+                    path=path,
+                ),
+                on_error=lambda exc: self.app.call_from_thread(
+                    self._handle_background_error,
+                    uri_snapshot=uri_snapshot,
+                    token=token,
+                    exc=exc,
+                    path=path,
+                ),
+            )
+            return True
+
         try:
-            if not self.uri.bucket_name:
-                path = f"list of buckets in project: ({self.storage.get_project()})"
-                self.showing_elems = self.storage.list_buckets()
-            else:
-                path = "gs://" + str(self.uri)
-                self.showing_elems = self.storage.list_prefix(uri=self.uri)
+            self.showing_elems = self._listing_service.fetch_and_cache(uri_snapshot)
             self.app.title = path
             return True
         except Forbidden:
@@ -199,6 +264,12 @@ class FileListView(ListView):
         self.showing_elems = []
         self.app.title = path
         return False
+
+    def clear_cache(self) -> None:
+        """Clear cached listings (e.g. after changing auth/project)."""
+        self._listing_service.clear()
+        # Bump token so any in-flight refresh won't apply.
+        self._refresh_token += 1
 
     def action_search(self) -> None:
         self.app.query_one("#search_box").focus()
