@@ -70,7 +70,9 @@ class GCS(Storage):
             delimiter="/", prefix=uri.full_prefix
         )
 
-        blob_list = list(blobs)
+        # Some buckets include a "directory marker" object whose name equals the
+        # prefix itself (e.g. "foo/bar/"). Don't show it as a child entry.
+        blob_list = [blob for blob in list(blobs) if blob.name != uri.full_prefix]
 
         return sorted(
             [
