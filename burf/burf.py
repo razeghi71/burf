@@ -1,5 +1,4 @@
 import argparse
-import os
 from typing import Any, Optional
 
 from textual.app import App, ComposeResult
