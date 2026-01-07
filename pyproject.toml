@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling>=1.24.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "burf"
+version = "1.2.1"
+description = "A tool to surf buckets on gcs"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Mohammad Razeghi", email = "razeghi71@gmail.com" }]
+dependencies = [
+  "google-cloud-storage==2.10.0",
+  "textual==0.28.1",
+]
+keywords = ["gcs", "google-cloud-storage", "tui", "textual"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Homepage = "https://github.com/razeghi71/burf"
+Repository = "https://github.com/razeghi71/burf"
+
+[project.scripts]
+burf = "burf.burf:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["burf"]
+
