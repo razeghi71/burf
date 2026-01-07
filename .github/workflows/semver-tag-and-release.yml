@@ -32,22 +32,15 @@ jobs:
 
             const has = (name) => labels.includes(name) || labels.includes(`semver:${name}`);
 
-            const picks = ['major', 'minor', 'patch'].filter(has);
-
             core.setOutput('labels', labels.join(', '));
-            if (picks.length === 0) {
-              core.setFailed(
-                `Missing version label on PR. Add one of: major/minor/patch (or semver:major/semver:minor/semver:patch). Found labels: [${labels.join(', ')}]`
-              );
-              return;
-            }
-            if (picks.length > 1) {
-              core.setFailed(
-                `Multiple version labels found on PR. Keep exactly one of major/minor/patch (or semver:*). Found: [${picks.join(', ')}]`
-              );
-              return;
-            }
-            core.setOutput('bump', picks[0]);
+            // Default to patch if no explicit label is present.
+            // If multiple are present, prefer the largest bump.
+            let bump = 'patch';
+            if (has('major')) bump = 'major';
+            else if (has('minor')) bump = 'minor';
+            else if (has('patch')) bump = 'patch';
+
+            core.setOutput('bump', bump);
 
       - name: Bump and push tag
         id: tag
