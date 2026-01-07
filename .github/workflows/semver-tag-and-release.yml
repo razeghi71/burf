@@ -49,59 +49,18 @@ jobs:
             }
             core.setOutput('bump', picks[0]);
 
-      - name: Set computed version outputs
-        id: computed
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          BUMP="${{ steps.bump.outputs.bump }}"
-          LATEST_TAG="$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1 || true)"
-          if [ -z "$LATEST_TAG" ]; then
-            # Seed version for repos migrating from a hardcoded version.
-            # If you already have tags, this branch won't be used.
-            BASE="1.2.1"
-          else
-            BASE="${LATEST_TAG#v}"
-          fi
-
-          NEXT_TAG="$(python - <<'PY'
-          import os
-          bump = os.environ["BUMP"]
-          base = os.environ["BASE"]
-          major, minor, patch = [int(x) for x in base.split(".")]
-          if bump == "major":
-            major, minor, patch = major + 1, 0, 0
-          elif bump == "minor":
-            minor, patch = minor + 1, 0
-          elif bump == "patch":
-            patch = patch + 1
-          else:
-            raise SystemExit(f"Unknown bump: {bump}")
-          print(f"v{major}.{minor}.{patch}")
-          PY
-          )"
-
-          echo "base=$BASE" >> "$GITHUB_OUTPUT"
-          echo "next_tag=$NEXT_TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Create and push tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          TAG="${{ steps.computed.outputs.next_tag }}"
-
-          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-            echo "Tag already exists: $TAG"
-            exit 0
-          fi
-
-          git tag "$TAG"
-          git push origin "$TAG"
+      - name: Bump and push tag
+        id: tag
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: ${{ steps.bump.outputs.bump }}
+          tag_prefix: "v"
+          initial_version: "1.2.1"
 
       - name: Create GitHub release (auto notes)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.computed.outputs.next_tag }}
+          tag_name: ${{ steps.tag.outputs.new_tag }}
           generate_release_notes: true
 

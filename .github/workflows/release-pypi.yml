@@ -23,13 +23,16 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
       - name: Build sdist and wheel
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --upgrade pip
-          python -m pip install build
-          python -m build
+          uv build
 
       - name: Publish to PyPI (Trusted Publisher / OIDC)
         uses: pypa/gh-action-pypi-publish@release/v1
