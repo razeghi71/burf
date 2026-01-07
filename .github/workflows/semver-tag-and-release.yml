@@ -35,17 +35,35 @@ jobs:
             const has = (name) => labels.includes(name) || labels.includes(`semver:${name}`);
 
             core.setOutput('labels', labels.join(', '));
-            // Default to patch if no explicit label is present.
+            // Default behavior: do NOT release unless an explicit semver label is present.
             // If multiple are present, prefer the largest bump.
-            let bump = 'patch';
+            let bump = null;
             if (has('major')) bump = 'major';
             else if (has('minor')) bump = 'minor';
             else if (has('patch')) bump = 'patch';
 
-            core.setOutput('bump', bump);
+            const shouldRelease = bump !== null;
+            core.setOutput('should_release', shouldRelease ? 'true' : 'false');
+            core.setOutput('bump', bump ?? '');
+
+      - name: No release (no semver label present)
+        if: steps.bump.outputs.should_release != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "### No release"
+            echo ""
+            echo "No semver label was found on this PR, so no tag or release will be created."
+            echo ""
+            echo "- PR labels: \`${{ steps.bump.outputs.labels }}\`"
+            echo ""
+            echo "To trigger a release, add one of: \`major\`, \`minor\`, \`patch\` (or \`semver:major\`, \`semver:minor\`, \`semver:patch\`)."
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Plan next tag (dry run)
         id: plan_next
+        if: steps.bump.outputs.should_release == 'true'
         uses: mathieudutour/github-tag-action@v6.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -56,6 +74,7 @@ jobs:
 
       - name: Publish planned tag/version
         id: planned
+        if: steps.bump.outputs.should_release == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -79,9 +98,10 @@ jobs:
       new_tag: ${{ steps.planned.outputs.new_tag }}
       new_version: ${{ steps.planned.outputs.new_version }}
       bump: ${{ steps.bump.outputs.bump }}
+      should_release: ${{ steps.bump.outputs.should_release }}
 
   tag_and_release:
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true && needs.plan_release.outputs.should_release == 'true'
     needs: plan_release
     runs-on: ubuntu-latest
     environment: release
