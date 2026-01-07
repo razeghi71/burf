@@ -8,7 +8,7 @@ class BucketWithPrefix:
     def __init__(
         self,
         bucket_name: str,
-        prefix: Sequence[str] | str,
+        prefixes: Sequence[str],
         is_blob: bool = False,
         size: Optional[int] = None,
         updated_at: Optional[datetime] = None,
@@ -17,18 +17,35 @@ class BucketWithPrefix:
         self.is_blob = is_blob
         self.size = size
         self.updated_at = updated_at
-
-        if isinstance(prefix, str):
-            self.prefixes = BucketWithPrefix.full_prefix_to_list(prefix)
-        elif isinstance(prefix, Sequence):
-            # Copy into a list so we have a stable internal representation.
-            self.prefixes = list(prefix)
-        else:
-            raise ValueError("invalid type for prefixes")
+        if isinstance(prefixes, str):
+            raise TypeError(
+                "BucketWithPrefix(prefixes=...) must be a sequence of path parts, not a string"
+            )
+        # Copy into a list so we have a stable internal representation.
+        self.prefixes = list(prefixes)
 
     @staticmethod
     def full_prefix_to_list(full_prefix: str) -> list[str]:
         return list(filter(lambda x: x.strip() != "", full_prefix.split("/")))
+
+    @classmethod
+    def from_full_prefix(
+        cls,
+        bucket_name: str,
+        full_prefix: str,
+        *,
+        is_blob: bool = False,
+        size: Optional[int] = None,
+        updated_at: Optional[datetime] = None,
+    ) -> BucketWithPrefix:
+        """Create from a single string prefix like 'a/b/c/' or 'a/b.txt'."""
+        return cls(
+            bucket_name=bucket_name,
+            prefixes=cls.full_prefix_to_list(full_prefix),
+            is_blob=is_blob,
+            size=size,
+            updated_at=updated_at,
+        )
 
     @property
     def full_prefix(self) -> str:

@@ -157,13 +157,17 @@ class FileListView(ListView):
 
     def on_list_view_selected(self, selected: ListView.Selected) -> None:
         selected_name = selected.item.name or ""
+        if not selected_name:
+            return
 
         if self.uri.bucket_name != "" and selected_name[-1] != "/":
             return
         elif self.uri.bucket_name == "":
             self.uri = BucketWithPrefix(selected_name, [])
         else:
-            self.uri = BucketWithPrefix(self.uri.bucket_name, selected_name)
+            self.uri = BucketWithPrefix.from_full_prefix(
+                self.uri.bucket_name, selected_name
+            )
 
         self.refresh_contents()
 
@@ -182,8 +186,12 @@ class FileListView(ListView):
         except RefreshError:
             self.app.post_message(self.AccessForbidden(self, path))
         except BadRequest as e:
-            for error in e.errors:
-                if "Invalid project" in error["message"]:
+            errors = getattr(e, "errors", None) or []
+            for error in errors:
+                message = ""
+                if isinstance(error, dict):
+                    message = str(error.get("message", ""))
+                if "Invalid project" in message:
                     self.app.post_message(
                         self.InvalidProject(self, self.storage.get_project())
                     )
