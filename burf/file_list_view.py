@@ -209,8 +209,6 @@ class FileListView(ListView):
         return self.uri
 
     def get_selected_uri(self) -> Optional[BucketWithPrefix]:
-        # Prefer returning the actual object from storage results so we preserve
-        # metadata like is_blob instead of reconstructing from rendered strings.
         index = self.index
         if index is None:
             return None
