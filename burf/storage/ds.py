@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import List, Optional
 from datetime import datetime
+from typing import Optional, Sequence
 
 
 class BucketWithPrefix:
     def __init__(
         self,
         bucket_name: str,
-        prefix: List[str] | str,
+        prefix: Sequence[str] | str,
         is_blob: bool = False,
         size: Optional[int] = None,
         updated_at: Optional[datetime] = None,
@@ -20,13 +20,14 @@ class BucketWithPrefix:
 
         if isinstance(prefix, str):
             self.prefixes = BucketWithPrefix.full_prefix_to_list(prefix)
-        elif isinstance(prefix, List):
-            self.prefixes = prefix
+        elif isinstance(prefix, Sequence):
+            # Copy into a list so we have a stable internal representation.
+            self.prefixes = list(prefix)
         else:
-            raise Exception("invalid type for prefixs")
+            raise ValueError("invalid type for prefixes")
 
     @staticmethod
-    def full_prefix_to_list(full_prefix: str) -> List[str]:
+    def full_prefix_to_list(full_prefix: str) -> list[str]:
         return list(filter(lambda x: x.strip() != "", full_prefix.split("/")))
 
     @property

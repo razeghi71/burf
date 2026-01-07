@@ -26,7 +26,7 @@ class GSUtilUIApp(App[Any]):
     file_list_view: FileListView
     search_box: SearchBox
 
-    def __init__(self, uri: BucketWithPrefix, gcp_project: str):
+    def __init__(self, uri: BucketWithPrefix, gcp_project: Optional[str]):
         super().__init__()
         self.storage = GCS(project=gcp_project)
         self.uri = uri
