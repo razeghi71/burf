@@ -16,15 +16,13 @@ or using source code:
 
 ## Usage
 
-    usage: burf.py [-h] [-c CONFIG] [-p PROJECT] [gcs_uri]
+    usage: burf.py [-h] [-p PROJECT] [gcs_uri]
 
     positional arguments:
         gcs_uri               gcs uri to browse: gs://<bucket>/<subdir1>/<subdir2>
 
     options:
         -h, --help            show this help message and exit
-        -c CONFIG, --config CONFIG
-                                path to config file
         -p PROJECT, --project PROJECT
                                 gcp project to use
 
