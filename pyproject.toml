@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling>=1.24.0"]
+requires = ["hatchling>=1.24.0", "hatch-vcs>=0.4.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "burf"
-version = "1.2.1"
+dynamic = ["version"]
 description = "A tool to surf buckets on gcs"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -32,6 +32,9 @@ Repository = "https://github.com/razeghi71/burf"
 
 [project.scripts]
 burf = "burf.burf:main"
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["burf"]

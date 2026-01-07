@@ -1,0 +1,107 @@
+name: Semver tag + GitHub release (from PR labels)
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: semver-tag-and-release
+  cancel-in-progress: false
+
+jobs:
+  tag_and_release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout merge commit (full history + tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+      - name: Determine semver bump from PR labels
+        id: bump
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = (context.payload.pull_request.labels || []).map(l => l.name.toLowerCase());
+
+            const has = (name) => labels.includes(name) || labels.includes(`semver:${name}`);
+
+            const picks = ['major', 'minor', 'patch'].filter(has);
+
+            core.setOutput('labels', labels.join(', '));
+            if (picks.length === 0) {
+              core.setFailed(
+                `Missing version label on PR. Add one of: major/minor/patch (or semver:major/semver:minor/semver:patch). Found labels: [${labels.join(', ')}]`
+              );
+              return;
+            }
+            if (picks.length > 1) {
+              core.setFailed(
+                `Multiple version labels found on PR. Keep exactly one of major/minor/patch (or semver:*). Found: [${picks.join(', ')}]`
+              );
+              return;
+            }
+            core.setOutput('bump', picks[0]);
+
+      - name: Set computed version outputs
+        id: computed
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BUMP="${{ steps.bump.outputs.bump }}"
+          LATEST_TAG="$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1 || true)"
+          if [ -z "$LATEST_TAG" ]; then
+            # Seed version for repos migrating from a hardcoded version.
+            # If you already have tags, this branch won't be used.
+            BASE="1.2.1"
+          else
+            BASE="${LATEST_TAG#v}"
+          fi
+
+          NEXT_TAG="$(python - <<'PY'
+          import os
+          bump = os.environ["BUMP"]
+          base = os.environ["BASE"]
+          major, minor, patch = [int(x) for x in base.split(".")]
+          if bump == "major":
+            major, minor, patch = major + 1, 0, 0
+          elif bump == "minor":
+            minor, patch = minor + 1, 0
+          elif bump == "patch":
+            patch = patch + 1
+          else:
+            raise SystemExit(f"Unknown bump: {bump}")
+          print(f"v{major}.{minor}.{patch}")
+          PY
+          )"
+
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "next_tag=$NEXT_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.computed.outputs.next_tag }}"
+
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag already exists: $TAG"
+            exit 0
+          fi
+
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub release (auto notes)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.computed.outputs.next_tag }}
+          generate_release_notes: true
+
