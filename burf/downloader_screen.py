@@ -1,7 +1,7 @@
 import os
 import threading
 from enum import Enum
-from typing import Callable, Any
+from typing import Any, Callable, Optional
 
 from textual.app import ComposeResult
 from textual.containers import Center, Container, Horizontal, Middle
@@ -31,18 +31,31 @@ class Downloader:
                 self.destination, uri.get_last_part_of_address()
             )
         self._storage = storage
+        self._blobs: Optional[list[BucketWithPrefix]] = None
+
+    def list_blobs(self) -> list[BucketWithPrefix]:
+        if self._blobs is None:
+            self._blobs = self._storage.list_all_blobs(self.uri)
+        return self._blobs
 
     def number_of_blobs(self) -> int:
-        return len(self._storage.list_all_blobs(self.uri))
+        return len(self.list_blobs())
 
     def download(self) -> None:
-        blobs = self._storage.list_all_blobs(self.uri)
+        blobs = self.list_blobs()
+        base_prefix = self.uri.full_prefix if not self.uri.is_blob else ""
         for blob in blobs:
             if not self.stopped:
-                destination_path = os.path.join(
-                    self.destination, blob.get_last_part_of_address()
-                )
-                os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+                if base_prefix and blob.full_prefix.startswith(base_prefix):
+                    rel_path = blob.full_prefix[len(base_prefix) :]
+                else:
+                    rel_path = blob.get_last_part_of_address()
+
+                destination_path = os.path.join(self.destination, rel_path)
+
+                destination_dir = os.path.dirname(destination_path)
+                if destination_dir:
+                    os.makedirs(destination_dir, exist_ok=True)
                 self._call_before(blob, destination_path)
                 self._storage.download_to_filename(blob, destination_path)
                 self._call_after(blob, destination_path)
@@ -97,32 +110,53 @@ class DownloaderScreen(Screen[None]):
             self.after_download,
         )
         self.state = State.STOPPED
+        self._download_thread: Optional[threading.Thread] = None
 
     def start_download(self) -> None:
+        total = self._downloader.number_of_blobs()
+
+        def _set_total() -> None:
+            self.progress.total = total
+
+        self.app.call_from_thread(_set_total)
+
         self._downloader.download()
 
-        self.state = State.FINISHED
-        self.label.update("Download Finished")
+        def _finish() -> None:
+            if self._downloader.stopped:
+                self.label.update("Download stopped")
+                self.state = State.STOPPED
+            else:
+                self.label.update("Download finished")
+                self.state = State.FINISHED
+
+        self.app.call_from_thread(_finish)
 
     def before_download(self, uri: BucketWithPrefix, destination: str) -> None:
-        self.label.update(f"Downloading {uri} -> {destination}")
+        self.app.call_from_thread(
+            self.label.update, f"Downloading {uri} -> {destination}"
+        )
 
     def after_download(self, uri: BucketWithPrefix, destination: str) -> None:
-        self.progress.advance(1)
-        self.label.update(f"Downloaded {uri} -> {destination}")
+        def _update() -> None:
+            self.progress.advance(1)
+            self.label.update(f"Downloaded {uri} -> {destination}")
+
+        self.app.call_from_thread(_update)
 
     def compose(self) -> ComposeResult:
-        self.label = Label("Starting Download", id="download-info")
-        self.progress = ProgressBar(total=self._downloader.number_of_blobs())
+        self.label = Label("Ready to download", id="download-info")
+        # Avoid blocking UI by listing objects in compose; total is set in the worker thread.
+        self.progress = ProgressBar(total=0)
 
         yield Header()
 
         with Container(id="question"):
             with Center():
                 q = (
-                    "Proced Downloading"
-                    f"{self._downloader.uri}"
-                    "=>"
+                    "Proceed downloading "
+                    f"{self._downloader.uri} "
+                    "=> "
                     f" {self._downloader.destination}"
                 )
                 self.question_label = Label(q)
@@ -154,7 +188,10 @@ class DownloaderScreen(Screen[None]):
                 self.query_one("#downloader").styles.display = "block"
                 self.state = State.STARTED
                 self._downloader.stopped = False
-                threading.Thread(target=self.start_download).start()
+                self._download_thread = threading.Thread(
+                    target=self.start_download, daemon=True
+                )
+                self._download_thread.start()
             else:
                 self.dismiss()
         elif self.state == State.STARTED:
@@ -164,3 +201,7 @@ class DownloaderScreen(Screen[None]):
             else:
                 self.query_one("#question").styles.display = "none"
                 self.query_one("#downloader").styles.display = "block"
+
+    def on_unmount(self) -> None:
+        # If the screen is removed while downloading, request a cooperative stop.
+        self._downloader.stopped = True

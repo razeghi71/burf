@@ -25,9 +25,9 @@ def get_gcs_bucket_and_prefix(gcs_uri: str) -> BucketWithPrefix:
         prefix = match.group("prefix")
     else:
         bucket = gcs_uri
-        prefix = []
+        prefix = ""
 
-    return BucketWithPrefix(bucket, prefix)
+    return BucketWithPrefix.from_full_prefix(bucket, prefix)
 
 
 K = TypeVar("K")

@@ -74,16 +74,16 @@ class GCS(Storage):
 
         return sorted(
             [
-                BucketWithPrefix(
+                BucketWithPrefix.from_full_prefix(
                     bucket_name=uri.bucket_name,
-                    prefix=subdir,
+                    full_prefix=subdir,
                 )
                 for subdir in blobs.prefixes
             ]
             + [
-                BucketWithPrefix(
+                BucketWithPrefix.from_full_prefix(
                     bucket_name=blob.bucket.name,
-                    prefix=blob.name,
+                    full_prefix=blob.name,
                     is_blob=True,
                     size=blob.size,
                     updated_at=blob.updated,
@@ -96,9 +96,9 @@ class GCS(Storage):
     def list_all_blobs(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
         blobs = self.client.bucket(uri.bucket_name).list_blobs(prefix=uri.full_prefix)
         return [
-            BucketWithPrefix(
+            BucketWithPrefix.from_full_prefix(
                 bucket_name=blob.bucket.name,
-                prefix=blob.name,
+                full_prefix=blob.name,
                 is_blob=True,
                 size=blob.size,
                 updated_at=blob.updated,
