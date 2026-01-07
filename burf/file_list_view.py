@@ -200,19 +200,11 @@ class FileListView(ListView):
         return self.uri
 
     def get_selected_uri(self) -> Optional[BucketWithPrefix]:
-        if self.highlighted_child is None:
+        # Prefer returning the actual object from storage results so we preserve
+        # metadata like is_blob instead of reconstructing from rendered strings.
+        index = self.index
+        if index is None:
             return None
-        if self.highlighted_child.name is None:
+        if index < 0 or index >= len(self.showing_elems):
             return None
-        selected_name = self.highlighted_child.name
-
-        # When browsing buckets, the selected item is a bucket name (not a blob).
-        if self.uri.bucket_name == "":
-            return BucketWithPrefix(selected_name, [])
-
-        is_blob = not selected_name.endswith("/")
-        return BucketWithPrefix(
-            self.uri.bucket_name,
-            selected_name,
-            is_blob=is_blob,
-        )
+        return self.showing_elems[index]
