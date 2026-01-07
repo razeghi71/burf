@@ -210,9 +210,6 @@ class FileListView(ListView):
         if self.uri.bucket_name == "":
             return BucketWithPrefix(selected_name, [])
 
-        # Within a bucket, Textual list items use a trailing "/" to denote prefixes.
-        # If we don't mark blobs correctly, BucketWithPrefix.full_prefix will add a "/"
-        # and downloads will match zero blobs -> progress shows 100% instantly.
         is_blob = not selected_name.endswith("/")
         return BucketWithPrefix(
             self.uri.bucket_name,
