@@ -101,7 +101,7 @@ class GCS(Storage):
                 prefix=blob.name,
                 is_blob=True,
                 size=blob.size,
-                updated_at=blob.update,
+                updated_at=blob.updated,
             )
             for blob in blobs
         ]

@@ -204,10 +204,18 @@ class FileListView(ListView):
             return None
         if self.highlighted_child.name is None:
             return None
-        if self.uri.bucket_name is None:
-            return BucketWithPrefix(self.highlighted_child.name, None)
-        else:
-            return BucketWithPrefix(
-                self.uri.bucket_name,
-                self.highlighted_child.name,
-            )
+        selected_name = self.highlighted_child.name
+
+        # When browsing buckets, the selected item is a bucket name (not a blob).
+        if self.uri.bucket_name == "":
+            return BucketWithPrefix(selected_name, [])
+
+        # Within a bucket, Textual list items use a trailing "/" to denote prefixes.
+        # If we don't mark blobs correctly, BucketWithPrefix.full_prefix will add a "/"
+        # and downloads will match zero blobs -> progress shows 100% instantly.
+        is_blob = not selected_name.endswith("/")
+        return BucketWithPrefix(
+            self.uri.bucket_name,
+            selected_name,
+            is_blob=is_blob,
+        )
