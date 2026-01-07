@@ -70,7 +70,7 @@ class GCS(Storage):
             delimiter="/", prefix=uri.full_prefix
         )
 
-        blob_list = list(blobs)
+        blob_list = [blob for blob in list(blobs) if blob.name != uri.full_prefix]
 
         return sorted(
             [
@@ -101,7 +101,7 @@ class GCS(Storage):
                 prefix=blob.name,
                 is_blob=True,
                 size=blob.size,
-                updated_at=blob.update,
+                updated_at=blob.updated,
             )
             for blob in blobs
         ]

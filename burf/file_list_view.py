@@ -95,14 +95,23 @@ class FileListView(ListView):
         self.clear()
         self.index = 0
 
+        base_prefix = self.uri.full_prefix if self.uri.bucket_name != "" else ""
+
         for showing_elem in new_showing_elems:
             row = []
             if showing_elem.is_bucket:
-                pretty_name = Label(f"📦 {showing_elem.bucket_name}")
+                display_name = showing_elem.bucket_name
+                pretty_name = Label(f"📦 {display_name}")
             elif not showing_elem.is_blob:
-                pretty_name = Label(f"📂 {showing_elem.full_prefix}")
+                display_name = showing_elem.full_prefix
+                if base_prefix and display_name.startswith(base_prefix):
+                    display_name = display_name[len(base_prefix) :]
+                pretty_name = Label(f"📂 {display_name}")
             else:
-                pretty_name = Label(f"📒 {showing_elem.full_prefix}")
+                display_name = showing_elem.full_prefix
+                if base_prefix and display_name.startswith(base_prefix):
+                    display_name = display_name[len(base_prefix) :]
+                pretty_name = Label(f"📒 {display_name}")
 
             row.append(pretty_name)
             if showing_elem.is_blob:
@@ -200,14 +209,9 @@ class FileListView(ListView):
         return self.uri
 
     def get_selected_uri(self) -> Optional[BucketWithPrefix]:
-        if self.highlighted_child is None:
+        index = self.index
+        if index is None:
             return None
-        if self.highlighted_child.name is None:
+        if index < 0 or index >= len(self.showing_elems):
             return None
-        if self.uri.bucket_name is None:
-            return BucketWithPrefix(self.highlighted_child.name, None)
-        else:
-            return BucketWithPrefix(
-                self.uri.bucket_name,
-                self.highlighted_child.name,
-            )
+        return self.showing_elems[index]
