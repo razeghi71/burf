@@ -18,7 +18,6 @@ jobs:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     env:
-      # Used only when the repo has no existing tags yet.
       INITIAL_VERSION: ${{ vars.INITIAL_VERSION || '1.2.1' }}
     steps:
       - name: Checkout merge commit (full history + tags)
@@ -115,11 +114,8 @@ jobs:
     if: github.event.pull_request.merged == true
     needs: plan_release
     runs-on: ubuntu-latest
-    # Create an environment named "release" in repo settings and enable required reviewers
-    # to make this a real confirmation step.
     environment: release
     env:
-      # Used only when the repo has no existing tags yet.
       INITIAL_VERSION: ${{ vars.INITIAL_VERSION || '1.2.1' }}
     steps:
       - name: Checkout merge commit (full history + tags)

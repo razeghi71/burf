@@ -18,8 +18,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # Optional manual gate for PyPI publishing.
-    # Create an environment named "pypi" in repo settings and enable required reviewers.
     environment: pypi
     steps:
       - name: Checkout (full history + tags)
