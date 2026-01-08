@@ -219,8 +219,6 @@ class FileListView(ListView):
         # Increment token so any prior background refresh won't clobber this view.
         self._refresh_token += 1
         token = self._refresh_token
-        # Cancel any in-flight listing work; navigation should be responsive.
-        self._listing_service.cancel_all()
 
         uri_snapshot = self.uri
 
