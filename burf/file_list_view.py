@@ -17,53 +17,6 @@ from burf.util import RecentDict, human_readable_bytes
 
 
 class FileListView(ListView):
-    DEFAULT_CSS = """
-    /* Textual 7 changed some default sizing; ensure rows stay one-line tall. */
-    FileListView > ListItem {
-        height: 1;
-        min-height: 1;
-        max-height: 1;
-        padding: 0 0;
-    }
-
-    /* Make selection visible even when ListView isn't focused.
-       Use #file_list for higher specificity than Textual defaults. */
-    #file_list > ListItem.-highlight {
-        color: $block-cursor-foreground;
-        background: $block-cursor-background;
-        text-style: $block-cursor-text-style;
-    }
-
-    FileListView > ListItem > Horizontal {
-        height: 1;
-        min-height: 1;
-        max-height: 1;
-    }
-
-    FileListView Label {
-        height: 1;
-    }
-
-    /* Column sizing for blobs (use CSS so highlight can override cleanly). */
-    FileListView Label.name {
-        width: 65%;
-    }
-    FileListView Label.time {
-        width: 25%;
-        background-tint: $foreground 6%;
-    }
-    FileListView Label.size {
-        width: 10%;
-        background-tint: $foreground 3%;
-    }
-
-    /* When highlighted, don't let per-column backgrounds obscure selection. */
-    #file_list > ListItem.-highlight Label {
-        background: transparent;
-        background-tint: transparent;
-    }
-    """
-
     class AccessForbidden(Message, bubble=True):
         path: str
         file_list_view: FileListView
@@ -163,39 +116,50 @@ class FileListView(ListView):
                     display_name = display_name[len(base_prefix) :]
                 pretty_name = Label(f"📒 {display_name}")
 
-            pretty_name.add_class("name")
             row.append(pretty_name)
             if showing_elem.is_blob:
+                pretty_name.styles.width = "65%"
+
                 if showing_elem.updated_at is not None:
                     time_label = Label(
                         showing_elem.updated_at.strftime("%Y-%m-%d %H:%M:%S.%f")
                     )
                 else:
                     time_label = Label("")
-                time_label.add_class("time")
+                time_label.styles.width = "25%"
 
                 if showing_elem.size is not None:
                     size_label = Label(human_readable_bytes(showing_elem.size))
                 else:
                     size_label = Label("")
-                size_label.add_class("size")
+                size_label.styles.width = "10%"
 
                 row.append(time_label)
                 row.append(size_label)
 
-            self.append(
-                ListItem(
-                    Horizontal(
-                        *row,
-                    ),
-                    name=showing_elem.bucket_name
-                    if showing_elem.is_bucket
-                    else showing_elem.full_prefix,
-                )
-            )
+            # In Textual 7, container widgets may default to stretching, which can
+            # make each ListItem fill the available height. Set explicit row/item
+            # heights so each entry remains a single terminal line.
+            row_container = Horizontal(*row)
+            row_container.styles.height = 1
+            row_container.styles.min_height = 1
+            row_container.styles.max_height = 1
+            for cell in row:
+                cell.styles.height = 1
 
-        # Set selection *after* appending items (Textual 7 will ignore indices
-        # set while the list is empty).
+            item = ListItem(
+                row_container,
+                name=showing_elem.bucket_name
+                if showing_elem.is_bucket
+                else showing_elem.full_prefix,
+            )
+            item.styles.height = 1
+            item.styles.min_height = 1
+            item.styles.max_height = 1
+            self.append(item)
+
+        # Set selection after appending items (Textual 7 may ignore index changes
+        # while the list is empty).
         if len(self.children) == 0:
             self.index = None
             return
@@ -205,11 +169,6 @@ class FileListView(ListView):
             self.index = max(0, min(cached_index, len(self.children) - 1))
         else:
             self.index = 0
-
-        # Ensure the highlight is visible / keys go to the list after refresh.
-        self.focus()
-        if self.highlighted_child is not None:
-            self.scroll_to_widget(self.highlighted_child, animate=False)
 
     def action_back(self) -> None:
         self.uri = self.uri.parent()
