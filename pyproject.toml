@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.24.0", "hatch-vcs>=0.4.0"]
+requires = ["hatchling>=1.28.0", "hatch-vcs>=0.5.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -11,8 +11,8 @@ requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "Mohammad Razeghi", email = "razeghi71@gmail.com" }]
 dependencies = [
-  "google-cloud-storage==2.10.0",
-  "textual==0.28.1",
+  "google-cloud-storage==3.7.0",
+  "textual==7.0.1",
 ]
 keywords = ["gcs", "google-cloud-storage", "tui", "textual"]
 classifiers = [
