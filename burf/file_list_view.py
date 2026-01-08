@@ -190,8 +190,7 @@ class FileListView(ListView):
         self.showing_elems = elems
         self.app.title = path
         # Stop any loading UI for the active uri.
-        if hasattr(self.app, "set_loading"):
-            self.app.set_loading(False)
+        self.app.set_loading(False)
 
     def _handle_background_error(
         self, *, uri_snapshot: BucketWithPrefix, token: int, exc: BaseException, path: str
@@ -199,8 +198,7 @@ class FileListView(ListView):
         if token != self._refresh_token or self.uri != uri_snapshot:
             return
         # Stop any loading UI for the active uri.
-        if hasattr(self.app, "set_loading"):
-            self.app.set_loading(False)
+        self.app.set_loading(False)
         if isinstance(exc, Forbidden) or isinstance(exc, RefreshError):
             self.app.post_message(self.AccessForbidden(self, path))
             return
@@ -232,8 +230,7 @@ class FileListView(ListView):
             # Render instantly from cache, then refresh in the background.
             self.showing_elems = cached
             self.app.title = path
-            if hasattr(self.app, "set_loading"):
-                self.app.set_loading(False)
+            self.app.set_loading(False)
             self._listing_service.refresh_async(
                 uri_snapshot,
                 on_success=lambda elems: self.app.call_from_thread(
@@ -256,8 +253,7 @@ class FileListView(ListView):
         # Cache miss: never block the UI thread. Show loading bar and refresh in background.
         self.showing_elems = []
         self.app.title = path
-        if hasattr(self.app, "set_loading"):
-            self.app.set_loading(True)
+        self.app.set_loading(True)
 
         self._listing_service.refresh_async(
             uri_snapshot,
@@ -283,8 +279,7 @@ class FileListView(ListView):
         self._listing_service.clear()
         # Bump token so any in-flight refresh won't apply.
         self._refresh_token += 1
-        if hasattr(self.app, "set_loading"):
-            self.app.set_loading(False)
+        self.app.set_loading(False)
 
     def action_search(self) -> None:
         self.app.query_one("#search_box").focus()
