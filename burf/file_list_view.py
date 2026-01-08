@@ -5,7 +5,6 @@ from typing import List, Optional
 from google.api_core.exceptions import BadRequest, Forbidden
 from google.auth.exceptions import RefreshError
 from textual.binding import Binding
-from textual.color import Color
 from textual.containers import Horizontal
 from textual.message import Message
 from textual.reactive import reactive
@@ -42,6 +41,26 @@ class FileListView(ListView):
 
     FileListView Label {
         height: 1;
+    }
+
+    /* Column sizing for blobs (use CSS so highlight can override cleanly). */
+    FileListView Label.name {
+        width: 65%;
+    }
+    FileListView Label.time {
+        width: 25%;
+        background-tint: $foreground 6%;
+    }
+    FileListView Label.size {
+        width: 10%;
+        background-tint: $foreground 3%;
+    }
+
+    /* When highlighted, don't let per-column backgrounds obscure selection. */
+    FileListView > ListItem.-highlight Label.time,
+    FileListView > ListItem.-highlight Label.size {
+        background: transparent;
+        background-tint: none;
     }
     """
 
@@ -144,26 +163,22 @@ class FileListView(ListView):
                     display_name = display_name[len(base_prefix) :]
                 pretty_name = Label(f"📒 {display_name}")
 
+            pretty_name.add_class("name")
             row.append(pretty_name)
             if showing_elem.is_blob:
-                pretty_name.styles.width = "65%"
-                bg_color = self.background_colors[0]
-
                 if showing_elem.updated_at is not None:
                     time_label = Label(
                         showing_elem.updated_at.strftime("%Y-%m-%d %H:%M:%S.%f")
                     )
                 else:
                     time_label = Label("")
-                time_label.styles.width = "25%"
-                time_label.styles.background = Color.lighten(bg_color, 0.2)
+                time_label.add_class("time")
 
                 if showing_elem.size is not None:
                     size_label = Label(human_readable_bytes(showing_elem.size))
                 else:
                     size_label = Label("")
-                size_label.styles.width = "10%"
-                size_label.styles.background = Color.lighten(bg_color, 0.1)
+                size_label.add_class("size")
 
                 row.append(time_label)
                 row.append(size_label)
