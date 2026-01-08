@@ -50,6 +50,12 @@ class FileListView(ListView):
         Binding("/", "search", "search"),
     ]
 
+    CSS = """
+    FileListView > ListItem {
+        height: 1;
+    }
+    """
+
     showing_elems: reactive[List[BucketWithPrefix]] = reactive([])
     position_cache: RecentDict[BucketWithPrefix, int] = RecentDict(10)
 

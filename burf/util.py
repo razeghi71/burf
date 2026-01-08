@@ -40,6 +40,6 @@ class RecentDict(OrderedDict[K, V], Generic[K, V]):
         super().__init__(*args, **kwargs)
 
     def __setitem__(self, key: K, value: V) -> None:
-        if len(self) >= self.max_elements:
+        if key not in self and len(self) >= self.max_elements:
             self.popitem(last=False)
         super().__setitem__(key, value)

@@ -16,8 +16,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "google-cloud-storage" },
-    { name = "textual" },
+    { name = "google-cloud-storage", specifier = "==3.7.0" },
+    { name = "textual", specifier = "==7.0.1" },
 ]
 
 [[package]]
