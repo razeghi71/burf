@@ -60,7 +60,7 @@ class FileListView(ListView):
     FileListView > ListItem.-highlight Label.time,
     FileListView > ListItem.-highlight Label.size {
         background: transparent;
-        background-tint: none;
+        background-tint: transparent;
     }
     """
 
