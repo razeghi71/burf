@@ -27,6 +27,13 @@ class FileListView(ListView):
         padding: 0 0;
     }
 
+    /* Make selection visible even when ListView isn't focused. */
+    FileListView > ListItem.-highlight {
+        color: $block-cursor-foreground;
+        background: $block-cursor-background;
+        text-style: $block-cursor-text-style;
+    }
+
     FileListView > ListItem > Horizontal {
         height: 1;
         min-height: 1;
@@ -118,7 +125,6 @@ class FileListView(ListView):
         self, _: List[BucketWithPrefix], new_showing_elems: List[BucketWithPrefix]
     ) -> None:
         self.clear()
-        self.index = 0
 
         base_prefix = self.uri.full_prefix if self.uri.bucket_name != "" else ""
 
@@ -173,8 +179,17 @@ class FileListView(ListView):
                 )
             )
 
+        # Set selection *after* appending items (Textual 7 will ignore indices
+        # set while the list is empty).
+        if len(self.children) == 0:
+            self.index = None
+            return
+
         if self.uri in self.position_cache:
-            self.index = self.position_cache[self.uri]
+            cached_index = self.position_cache[self.uri]
+            self.index = max(0, min(cached_index, len(self.children) - 1))
+        else:
+            self.index = 0
 
     def action_back(self) -> None:
         self.uri = self.uri.parent()

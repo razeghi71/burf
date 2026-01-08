@@ -57,6 +57,11 @@ class GSUtilUIApp(App[Any]):
         yield self.search_box
         yield Footer()
 
+    def on_mount(self) -> None:
+        # Make the file list the default focus target so selection is visible
+        # and arrow keys behave as expected.
+        self.file_list_view.focus()
+
     def set_loading(self, is_loading: bool) -> None:
         if is_loading:
             self._spinner_idx = 0
