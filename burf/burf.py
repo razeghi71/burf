@@ -3,9 +3,9 @@ from typing import Any, Optional
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.containers import Center
 from textual.timer import Timer
-from textual.widgets import Footer, Header
-from textual.widgets import ProgressBar
+from textual.widgets import Footer, Header, Label
 
 from burf.downloader_screen import DownloaderScreen
 from burf.error_screen import ErrorScreen
@@ -27,17 +27,19 @@ class GSUtilUIApp(App[Any]):
 
     file_list_view: FileListView
     search_box: SearchBox
-    loading_bar: ProgressBar
+    loading_spinner: Label
 
     def __init__(self, uri: BucketWithPrefix, gcp_project: Optional[str]):
         super().__init__()
         self.storage = GCS(project=gcp_project)
         self.uri = uri
-        self._loading_timer: Timer | None = None
+        self._spinner_timer: Timer | None = None
+        self._spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        self._spinner_idx = 0
 
     def compose(self) -> ComposeResult:
-        self.loading_bar = ProgressBar(total=100, id="loading_bar")
-        self.loading_bar.styles.display = "none"
+        self.loading_spinner = Label("", id="loading_spinner")
+        self.loading_spinner.styles.display = "none"
 
         self.file_list_view = FileListView(
             storage=self.storage,
@@ -47,34 +49,31 @@ class GSUtilUIApp(App[Any]):
         self.search_box = SearchBox(id="search_box")
 
         yield Header()
-        yield self.loading_bar
+        with Center():
+            yield self.loading_spinner
         yield self.file_list_view
         yield self.search_box
         yield Footer()
 
     def set_loading(self, is_loading: bool) -> None:
-        """Show/hide the animated loading bar for cache-miss listings."""
+        """Show/hide a spinner for cache-miss listings."""
         if is_loading:
-            self.loading_bar.styles.display = "block"
-            # Indeterminate animation: advance and wrap continuously.
-            self.loading_bar.total = 100
-            self.loading_bar.progress = 0
+            self._spinner_idx = 0
+            self.loading_spinner.update(f"{self._spinner_frames[self._spinner_idx]} Loading…")
+            self.loading_spinner.styles.display = "block"
 
-            if self._loading_timer is None:
-                self._loading_timer = self.set_interval(0.03, self._tick_loading_bar)
+            if self._spinner_timer is None:
+                self._spinner_timer = self.set_interval(0.08, self._tick_spinner)
             else:
-                self._loading_timer.resume()
+                self._spinner_timer.resume()
         else:
-            if self._loading_timer is not None:
-                self._loading_timer.pause()
-            self.loading_bar.styles.display = "none"
+            if self._spinner_timer is not None:
+                self._spinner_timer.pause()
+            self.loading_spinner.styles.display = "none"
 
-    def _tick_loading_bar(self) -> None:
-        # Wrap so it looks like an indeterminate bar.
-        if self.loading_bar.progress >= self.loading_bar.total:
-            self.loading_bar.progress = 0
-        else:
-            self.loading_bar.advance(1)
+    def _tick_spinner(self) -> None:
+        self._spinner_idx = (self._spinner_idx + 1) % len(self._spinner_frames)
+        self.loading_spinner.update(f"{self._spinner_frames[self._spinner_idx]} Loading…")
 
     # screen call-backs
     def change_project(self, project: Optional[str]) -> None:
