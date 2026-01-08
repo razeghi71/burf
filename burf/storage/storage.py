@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
+from google.api_core.exceptions import NotFound
 from google.auth.credentials import Credentials
 from google.cloud.storage import Client  # type: ignore
 
@@ -26,6 +27,11 @@ class Storage(ABC):
 
     @abstractmethod
     def download_to_filename(self, uri: BucketWithPrefix, dest: str) -> None:
+        pass
+
+    @abstractmethod
+    def delete_blob(self, uri: BucketWithPrefix) -> None:
+        """Delete a single blob object."""
         pass
 
 
@@ -111,3 +117,14 @@ class GCS(Storage):
 
         if blob.exists():
             blob.download_to_filename(dest)
+
+    def delete_blob(self, uri: BucketWithPrefix) -> None:
+        if not uri.bucket_name or not uri.is_blob:
+            raise ValueError("delete_blob expects a blob URI with a bucket name")
+
+        blob = self.client.bucket(uri.bucket_name).blob(uri.full_prefix)
+        try:
+            blob.delete()
+        except NotFound:
+            # Best-effort: object may have been removed already.
+            return

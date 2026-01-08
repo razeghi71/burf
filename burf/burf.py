@@ -8,6 +8,7 @@ from textual.timer import Timer
 from textual.widgets import Footer, Header, Label
 
 from burf.downloader_screen import DownloaderScreen
+from burf.deleter_screen import DeleterScreen
 from burf.error_screen import ErrorScreen
 from burf.file_list_view import FileListView
 from burf.search_box import SearchBox
@@ -22,6 +23,7 @@ class GSUtilUIApp(App[Any]):
         Binding("ctrl+p", "project_select", "select gcp project"),
         Binding("ctrl+g", "go_to", "go to address"),
         Binding("ctrl+d", "download", "download selected"),
+        Binding("ctrl+x", "delete", "delete selected"),
         Binding("ctrl+c", "quit", "Quit"),
     ]
 
@@ -105,6 +107,20 @@ class GSUtilUIApp(App[Any]):
 
         if selected is not None:
             self.push_screen(DownloaderScreen(selected, self.storage))
+
+    def action_delete(self) -> None:
+        selected = self.file_list_view.get_selected_uri()
+        if selected is None:
+            return
+        if selected.is_bucket:
+            self.push_screen(
+                ErrorScreen(
+                    title="Delete not supported",
+                    message="Deleting buckets is not supported from this UI.",
+                )
+            )
+            return
+        self.push_screen(DeleterScreen(selected, self.storage))
 
     # message handlers
     def on_input_submitted(self, value: SearchBox.Submitted) -> None:
