@@ -52,10 +52,13 @@ class FileListView(ListView):
 
     CSS = """
     FileListView > ListItem {
-        height: 1;
+        height: 1 !important;
     }
     FileListView > ListItem > Horizontal {
-        height: 1;
+        height: 1 !important;
+    }
+    FileListView > ListItem:selected {
+        background: $accent;
     }
     """
 
