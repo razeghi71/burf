@@ -26,8 +26,9 @@ class FileListView(ListView):
         padding: 0 0;
     }
 
-    /* Make selection visible even when ListView isn't focused. */
-    FileListView > ListItem.-highlight {
+    /* Make selection visible even when ListView isn't focused.
+       Use #file_list for higher specificity than Textual defaults. */
+    #file_list > ListItem.-highlight {
         color: $block-cursor-foreground;
         background: $block-cursor-background;
         text-style: $block-cursor-text-style;
@@ -57,8 +58,7 @@ class FileListView(ListView):
     }
 
     /* When highlighted, don't let per-column backgrounds obscure selection. */
-    FileListView > ListItem.-highlight Label.time,
-    FileListView > ListItem.-highlight Label.size {
+    #file_list > ListItem.-highlight Label {
         background: transparent;
         background-tint: transparent;
     }
@@ -205,6 +205,11 @@ class FileListView(ListView):
             self.index = max(0, min(cached_index, len(self.children) - 1))
         else:
             self.index = 0
+
+        # Ensure the highlight is visible / keys go to the list after refresh.
+        self.focus()
+        if self.highlighted_child is not None:
+            self.scroll_to_widget(self.highlighted_child, animate=False)
 
     def action_back(self) -> None:
         self.uri = self.uri.parent()
