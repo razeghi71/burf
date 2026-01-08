@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import threading
 from typing import List, Optional
 
 from google.auth.credentials import Credentials
@@ -7,17 +8,27 @@ from google.cloud.storage import Client  # type: ignore
 from burf.storage.ds import BucketWithPrefix
 
 
+class ListingCancelledError(Exception):
+    """Raised when a listing operation is cancelled cooperatively."""
+
+
 class Storage(ABC):
     @abstractmethod
-    def list_buckets(self) -> List[BucketWithPrefix]:
+    def list_buckets(
+        self, cancel_event: threading.Event | None = None
+    ) -> List[BucketWithPrefix]:
         pass
 
     @abstractmethod
-    def list_prefix(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
+    def list_prefix(
+        self, uri: BucketWithPrefix, cancel_event: threading.Event | None = None
+    ) -> List[BucketWithPrefix]:
         pass
 
     @abstractmethod
-    def list_all_blobs(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
+    def list_all_blobs(
+        self, uri: BucketWithPrefix, cancel_event: threading.Event | None = None
+    ) -> List[BucketWithPrefix]:
         pass
 
     @abstractmethod
@@ -61,16 +72,33 @@ class GCS(Storage):
         else:
             self.client = Client(credentials=self.credentials)
 
-    def list_buckets(self) -> List[BucketWithPrefix]:
+    def list_buckets(
+        self, cancel_event: threading.Event | None = None
+    ) -> List[BucketWithPrefix]:
         buckets = self.client.list_buckets()
-        return [BucketWithPrefix(bucket.name, []) for bucket in buckets]
+        out: list[BucketWithPrefix] = []
+        for bucket in buckets:
+            if cancel_event is not None and cancel_event.is_set():
+                raise ListingCancelledError()
+            out.append(BucketWithPrefix(bucket.name, []))
+        return out
 
-    def list_prefix(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
+    def list_prefix(
+        self, uri: BucketWithPrefix, cancel_event: threading.Event | None = None
+    ) -> List[BucketWithPrefix]:
+        if cancel_event is not None and cancel_event.is_set():
+            raise ListingCancelledError()
+
         blobs = self.client.bucket(uri.bucket_name).list_blobs(
             delimiter="/", prefix=uri.full_prefix
         )
 
-        blob_list = [blob for blob in list(blobs) if blob.name != uri.full_prefix]
+        blob_list = []
+        for blob in blobs:
+            if cancel_event is not None and cancel_event.is_set():
+                raise ListingCancelledError()
+            if blob.name != uri.full_prefix:
+                blob_list.append(blob)
 
         return sorted(
             [
@@ -93,18 +121,26 @@ class GCS(Storage):
             key=lambda x: x.full_prefix,
         )
 
-    def list_all_blobs(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
+    def list_all_blobs(
+        self, uri: BucketWithPrefix, cancel_event: threading.Event | None = None
+    ) -> List[BucketWithPrefix]:
+        if cancel_event is not None and cancel_event.is_set():
+            raise ListingCancelledError()
         blobs = self.client.bucket(uri.bucket_name).list_blobs(prefix=uri.full_prefix)
-        return [
-            BucketWithPrefix.from_full_prefix(
-                bucket_name=blob.bucket.name,
-                full_prefix=blob.name,
-                is_blob=True,
-                size=blob.size,
-                updated_at=blob.updated,
+        out: list[BucketWithPrefix] = []
+        for blob in blobs:
+            if cancel_event is not None and cancel_event.is_set():
+                raise ListingCancelledError()
+            out.append(
+                BucketWithPrefix.from_full_prefix(
+                    bucket_name=blob.bucket.name,
+                    full_prefix=blob.name,
+                    is_blob=True,
+                    size=blob.size,
+                    updated_at=blob.updated,
+                )
             )
-            for blob in blobs
-        ]
+        return out
 
     def download_to_filename(self, uri: BucketWithPrefix, dest: str) -> None:
         blob = self.client.bucket(uri.bucket_name).blob(uri.full_prefix)
