@@ -39,14 +39,6 @@ class ListingCacheEntry:
 
 
 class ListingService:
-    """Cache + refresh bucket/prefix listings for a Storage.
-
-    This service is intentionally UI-agnostic:
-    - it never touches Textual
-    - it never assumes a main thread
-    - it reports async results via callbacks
-    """
-
     def __init__(self, storage: Storage, *, cache_size: int = 25) -> None:
         self._storage = storage
         self._cache: RecentDict[BucketWithPrefix, ListingCacheEntry] = RecentDict(cache_size)
@@ -77,11 +69,9 @@ class ListingService:
     ) -> None:
         """Refresh a listing in the background.
 
-        - If another refresh for the same uri is in-flight, this is a no-op.
         - `on_success` is only called if the new listing differs from the cached one.
         - Callbacks are invoked on the worker thread.
         """
-        # Tokening / generation: newer refreshes supersede older ones (UI + cache).
         with self._lock:
             gen = self._generation.get(uri, 0) + 1
             self._generation[uri] = gen
@@ -94,10 +84,8 @@ class ListingService:
                 refreshed_sig = _listing_signature(refreshed)
 
                 with self._lock:
-                    # Drop stale results (navigation / refresh superseded this request).
                     if self._generation.get(uri, 0) != gen:
                         return
-                    # Cache only the newest result.
                     self._cache[uri] = ListingCacheEntry(
                         elems=refreshed,
                         signature=refreshed_sig,
@@ -105,7 +93,6 @@ class ListingService:
                     )
                     should_notify = cached_sig != refreshed_sig
 
-                # Only notify if something actually changed.
                 if should_notify:
                     on_success(refreshed)
             except BaseException as e:

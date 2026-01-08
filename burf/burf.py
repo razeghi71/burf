@@ -56,7 +56,6 @@ class GSUtilUIApp(App[Any]):
         yield Footer()
 
     def set_loading(self, is_loading: bool) -> None:
-        """Show/hide a spinner for cache-miss listings."""
         if is_loading:
             self._spinner_idx = 0
             self.loading_spinner.update(f"{self._spinner_frames[self._spinner_idx]} Loading…")
