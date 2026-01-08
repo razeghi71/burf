@@ -18,6 +18,26 @@ from burf.util import RecentDict, human_readable_bytes
 
 
 class FileListView(ListView):
+    DEFAULT_CSS = """
+    /* Textual 7 changed some default sizing; ensure rows stay one-line tall. */
+    FileListView > ListItem {
+        height: 1;
+        min-height: 1;
+        max-height: 1;
+        padding: 0 0;
+    }
+
+    FileListView > ListItem > Horizontal {
+        height: 1;
+        min-height: 1;
+        max-height: 1;
+    }
+
+    FileListView Label {
+        height: 1;
+    }
+    """
+
     class AccessForbidden(Message, bubble=True):
         path: str
         file_list_view: FileListView
