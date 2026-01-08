@@ -77,6 +77,8 @@ class FileListView(ListView):
         self._listing_service = ListingService(storage)
         self._uri = uri
         self._refresh_token = 0
+
+    def on_mount(self) -> None:
         self.refresh_contents()
 
     @property
@@ -186,12 +188,14 @@ class FileListView(ListView):
             return
         self.showing_elems = elems
         self.app.title = path
+        self.app.set_loading(False)
 
     def _handle_background_error(
         self, *, uri_snapshot: BucketWithPrefix, token: int, exc: BaseException, path: str
     ) -> None:
         if token != self._refresh_token or self.uri != uri_snapshot:
             return
+        self.app.set_loading(False)
         if isinstance(exc, Forbidden) or isinstance(exc, RefreshError):
             self.app.post_message(self.AccessForbidden(self, path))
             return
@@ -207,7 +211,6 @@ class FileListView(ListView):
         # For other background errors, keep existing contents (best-effort).
 
     def refresh_contents(self) -> bool:
-        # Increment token so any prior background refresh won't clobber this view.
         self._refresh_token += 1
         token = self._refresh_token
 
@@ -220,9 +223,9 @@ class FileListView(ListView):
 
         cached = self._listing_service.get_cached(uri_snapshot)
         if cached is not None:
-            # Render instantly from cache, then refresh in the background.
             self.showing_elems = cached
             self.app.title = path
+            self.app.set_loading(False)
             self._listing_service.refresh_async(
                 uri_snapshot,
                 on_success=lambda elems: self.app.call_from_thread(
@@ -242,34 +245,33 @@ class FileListView(ListView):
             )
             return True
 
-        try:
-            self.showing_elems = self._listing_service.fetch_and_cache(uri_snapshot)
-            self.app.title = path
-            return True
-        except Forbidden:
-            self.app.post_message(self.AccessForbidden(self, path))
-        except RefreshError:
-            self.app.post_message(self.AccessForbidden(self, path))
-        except BadRequest as e:
-            errors = getattr(e, "errors", None) or []
-            for error in errors:
-                message = ""
-                if isinstance(error, dict):
-                    message = str(error.get("message", ""))
-                if "Invalid project" in message:
-                    self.app.post_message(
-                        self.InvalidProject(self, self.storage.get_project())
-                    )
-                    break
         self.showing_elems = []
         self.app.title = path
-        return False
+        self.app.set_loading(True)
+
+        self._listing_service.refresh_async(
+            uri_snapshot,
+            on_success=lambda elems: self.app.call_from_thread(
+                self._apply_refreshed_listing,
+                uri_snapshot=uri_snapshot,
+                token=token,
+                elems=elems,
+                path=path,
+            ),
+            on_error=lambda exc: self.app.call_from_thread(
+                self._handle_background_error,
+                uri_snapshot=uri_snapshot,
+                token=token,
+                exc=exc,
+                path=path,
+            ),
+        )
+        return True
 
     def clear_cache(self) -> None:
-        """Clear cached listings (e.g. after changing auth/project)."""
         self._listing_service.clear()
-        # Bump token so any in-flight refresh won't apply.
         self._refresh_token += 1
+        self.app.set_loading(False)
 
     def action_search(self) -> None:
         self.app.query_one("#search_box").focus()
