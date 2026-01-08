@@ -5,6 +5,7 @@ from typing import List, Optional
 from google.api_core.exceptions import BadRequest, Forbidden
 from google.auth.exceptions import RefreshError
 from textual.binding import Binding
+from textual.color import Color
 from textual.containers import Horizontal
 from textual.message import Message
 from textual.reactive import reactive
@@ -97,6 +98,7 @@ class FileListView(ListView):
         self, _: List[BucketWithPrefix], new_showing_elems: List[BucketWithPrefix]
     ) -> None:
         self.clear()
+        self.index = 0
 
         base_prefix = self.uri.full_prefix if self.uri.bucket_name != "" else ""
 
@@ -119,6 +121,7 @@ class FileListView(ListView):
             row.append(pretty_name)
             if showing_elem.is_blob:
                 pretty_name.styles.width = "65%"
+                bg_color = self.background_colors[0]
 
                 if showing_elem.updated_at is not None:
                     time_label = Label(
@@ -127,48 +130,31 @@ class FileListView(ListView):
                 else:
                     time_label = Label("")
                 time_label.styles.width = "25%"
+                time_label.styles.background = Color.lighten(bg_color, 0.2)
 
                 if showing_elem.size is not None:
                     size_label = Label(human_readable_bytes(showing_elem.size))
                 else:
                     size_label = Label("")
                 size_label.styles.width = "10%"
+                size_label.styles.background = Color.lighten(bg_color, 0.1)
 
                 row.append(time_label)
                 row.append(size_label)
 
-            # In Textual 7, container widgets may default to stretching, which can
-            # make each ListItem fill the available height. Set explicit row/item
-            # heights so each entry remains a single terminal line.
-            row_container = Horizontal(*row)
-            row_container.styles.height = 1
-            row_container.styles.min_height = 1
-            row_container.styles.max_height = 1
-            for cell in row:
-                cell.styles.height = 1
-
-            item = ListItem(
-                row_container,
-                name=showing_elem.bucket_name
-                if showing_elem.is_bucket
-                else showing_elem.full_prefix,
+            self.append(
+                ListItem(
+                    Horizontal(
+                        *row,
+                    ),
+                    name=showing_elem.bucket_name
+                    if showing_elem.is_bucket
+                    else showing_elem.full_prefix,
+                )
             )
-            item.styles.height = 1
-            item.styles.min_height = 1
-            item.styles.max_height = 1
-            self.append(item)
-
-        # Set selection after appending items (Textual 7 may ignore index changes
-        # while the list is empty).
-        if len(self.children) == 0:
-            self.index = None
-            return
 
         if self.uri in self.position_cache:
-            cached_index = self.position_cache[self.uri]
-            self.index = max(0, min(cached_index, len(self.children) - 1))
-        else:
-            self.index = 0
+            self.index = self.position_cache[self.uri]
 
     def action_back(self) -> None:
         self.uri = self.uri.parent()
