@@ -11,8 +11,8 @@ requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "Mohammad Razeghi", email = "razeghi71@gmail.com" }]
 dependencies = [
-  "google-cloud-storage==2.10.0",
-  "textual==0.28.1",
+  "google-cloud-storage",
+  "textual",
 ]
 keywords = ["gcs", "google-cloud-storage", "tui", "textual"]
 classifiers = [
