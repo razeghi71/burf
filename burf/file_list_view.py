@@ -54,6 +54,9 @@ class FileListView(ListView):
     FileListView > ListItem {
         height: 1;
     }
+    FileListView > ListItem > Horizontal {
+        height: 1;
+    }
     """
 
     showing_elems: reactive[List[BucketWithPrefix]] = reactive([])
@@ -127,7 +130,7 @@ class FileListView(ListView):
             row.append(pretty_name)
             if showing_elem.is_blob:
                 pretty_name.styles.width = "65%"
-                bg_color = self.background_colors[0]
+                bg_color = Color.parse("green")
 
                 if showing_elem.updated_at is not None:
                     time_label = Label(
@@ -195,6 +198,7 @@ class FileListView(ListView):
         self.showing_elems = elems
         self.app.title = path
         self.app.set_loading(False)
+        self.focus()
 
     def _handle_background_error(
         self, *, uri_snapshot: BucketWithPrefix, token: int, exc: BaseException, path: str
