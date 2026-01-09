@@ -139,7 +139,7 @@ class DeleterScreen(Screen[None]):
                 count_note = ""
                 if not self._deleter.uri.is_blob:
                     count_note = " (this will delete all objects under the prefix)"
-                q = f"Proceed deleting gs://{self._deleter.uri}{count_note}?"
+                q = f"Proceed deleting {self._deleter._storage.scheme}://{self._deleter.uri}{count_note}?"
                 self.question_label = Label(q)
                 yield self.question_label
 

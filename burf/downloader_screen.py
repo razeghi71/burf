@@ -155,7 +155,7 @@ class DownloaderScreen(Screen[None]):
             with Center():
                 q = (
                     "Proceed downloading "
-                    f"{self._downloader.uri} "
+                    f"{self._downloader._storage.scheme}://{self._downloader.uri} "
                     "=> "
                     f" {self._downloader.destination}"
                 )

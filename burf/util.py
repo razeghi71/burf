@@ -1,7 +1,7 @@
 import math
 import re
 from collections import OrderedDict
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, Tuple
 
 from burf.storage.ds import BucketWithPrefix
 
@@ -18,16 +18,47 @@ def human_readable_bytes(size_in_bytes: int) -> str:
     return f"{size} {size_name[idx]}"
 
 
-def get_gcs_bucket_and_prefix(gcs_uri: str) -> BucketWithPrefix:
-    match = re.match(r"(gs://)?(?P<bucket>[^/]+)/*(?P<prefix>.*)", gcs_uri)
+def parse_uri(uri: str) -> Tuple[str, BucketWithPrefix]:
+    """
+    Parses a URI and returns the scheme (gs or s3) and the BucketWithPrefix object.
+    Defaults to gs if no scheme is provided or if scheme is not s3.
+    """
+    if uri.startswith("s3://"):
+        scheme = "s3"
+        # Remove s3://
+        uri_path = uri[5:]
+    elif uri.startswith("gs://"):
+        scheme = "gs"
+        # Remove gs://
+        uri_path = uri[5:]
+    else:
+        # Default to gs if no scheme provided, for backward compatibility
+        scheme = "gs"
+        uri_path = uri
+
+    # Regex to capture bucket and prefix
+    # Pattern: ^(?P<bucket>[^/]+)/*(?P<prefix>.*)
+    # This assumes uri_path does not start with scheme
+    match = re.match(r"^(?P<bucket>[^/]+)/*(?P<prefix>.*)", uri_path)
+    
     if match:
         bucket = match.group("bucket")
         prefix = match.group("prefix")
     else:
-        bucket = gcs_uri
+        # If it doesn't match the pattern (e.g. empty string or just slash), handle gracefully
+        # If uri_path is empty, it means we are at the root (listing buckets)
+        if not uri_path:
+             return scheme, BucketWithPrefix("", [])
+        bucket = uri_path
         prefix = ""
 
-    return BucketWithPrefix.from_full_prefix(bucket, prefix)
+    return scheme, BucketWithPrefix.from_full_prefix(bucket, prefix)
+
+
+def get_gcs_bucket_and_prefix(gcs_uri: str) -> BucketWithPrefix:
+    """Deprecated: Use parse_uri instead."""
+    _, bucket_with_prefix = parse_uri(gcs_uri)
+    return bucket_with_prefix
 
 
 K = TypeVar("K")

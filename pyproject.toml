@@ -13,6 +13,7 @@ authors = [{ name = "Mohammad Razeghi", email = "razeghi71@gmail.com" }]
 dependencies = [
   "google-cloud-storage==2.10.0",
   "textual==0.28.1",
+  "boto3>=1.28.0",
 ]
 keywords = ["gcs", "google-cloud-storage", "tui", "textual"]
 classifiers = [

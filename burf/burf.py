@@ -13,14 +13,15 @@ from burf.error_screen import ErrorScreen
 from burf.file_list_view import FileListView
 from burf.search_box import SearchBox
 from burf.storage.ds import BucketWithPrefix
-from burf.storage.storage import GCS
+from burf.storage.storage import GCS, Storage
+from burf.storage.s3 import S3
 from burf.string_getter import StringGetter
-from burf.util import get_gcs_bucket_and_prefix
+from burf.util import parse_uri
 
 
-class GSUtilUIApp(App[Any]):
+class BurfApp(App[Any]):
     BINDINGS = [
-        Binding("ctrl+p", "project_select", "select gcp project"),
+        Binding("ctrl+p", "project_select", "select gcp project/aws profile"),
         Binding("ctrl+g", "go_to", "go to address"),
         Binding("ctrl+d", "download", "download selected"),
         Binding("ctrl+x", "delete", "delete selected"),
@@ -31,9 +32,9 @@ class GSUtilUIApp(App[Any]):
     search_box: SearchBox
     loading_spinner: Label
 
-    def __init__(self, uri: BucketWithPrefix, gcp_project: Optional[str]):
+    def __init__(self, uri: BucketWithPrefix, storage: Storage):
         super().__init__()
-        self.storage = GCS(project=gcp_project)
+        self.storage = storage
         self.uri = uri
         self._spinner_timer: Timer | None = None
         self._spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
@@ -79,26 +80,43 @@ class GSUtilUIApp(App[Any]):
     # screen call-backs
     def change_project(self, project: Optional[str]) -> None:
         if project is not None:
-            self.storage.set_project(project)
+            if isinstance(self.storage, GCS):
+                self.storage.set_project(project)
+            elif isinstance(self.storage, S3):
+                # For S3, we treat 'project' as profile
+                # But S3 class doesn't have set_profile, we might need to recreate it or add method
+                # Recreating is safer as session is tied to profile
+                self.storage = S3(profile=project)
+                self.file_list_view.storage = self.storage
+            
             self.file_list_view.clear_cache()
             self.file_list_view.refresh_contents()
 
     def change_addr(self, new_addr: Optional[str]) -> None:
         if new_addr is not None:
-            uri = get_gcs_bucket_and_prefix(new_addr)
+            scheme, uri = parse_uri(new_addr)
+            
+            # Check if we need to switch storage backend
+            if scheme == "s3" and not isinstance(self.storage, S3):
+                self.storage = S3()
+                self.file_list_view.storage = self.storage
+            elif scheme == "gs" and not isinstance(self.storage, GCS):
+                self.storage = GCS()
+                self.file_list_view.storage = self.storage
+            
             self.file_list_view.uri = uri
             self.file_list_view.refresh_contents()
 
     # actions
     def action_project_select(self, error: Optional[str] = None) -> None:
         self.push_screen(
-            StringGetter(place_holder="gcp project name", error=error),
+            StringGetter(place_holder="gcp project name / aws profile", error=error),
             self.change_project,
         )
 
     def action_go_to(self) -> None:
         self.push_screen(
-            StringGetter(place_holder="gs://bucket_name/subdir1/subdir2"),
+            StringGetter(place_holder="gs://bucket/path or s3://bucket/path"),
             self.change_addr,
         )
 
@@ -129,17 +147,25 @@ class GSUtilUIApp(App[Any]):
     def on_file_list_view_access_forbidden(
         self, af: FileListView.AccessForbidden
     ) -> None:
+        message = f"Forbidden to access: {af.path}\n\n"
+        if isinstance(self.storage, GCS):
+            message += (
+                "This app relies on Application Default Credentials (ADC).\n"
+                "Authenticate and/or switch identity outside the app (e.g. with gcloud),\n"
+                "then re-run burf.\n\n"
+                "Common fix:\n"
+                "  gcloud auth application-default login\n"
+            )
+        elif isinstance(self.storage, S3):
+             message += (
+                "Check your AWS credentials/profile.\n"
+                "You might need to run `aws configure` or set AWS_PROFILE.\n"
+            )
+
         self.push_screen(
             ErrorScreen(
                 title="Access forbidden",
-                message=(
-                    f"Forbidden to access: {af.path}\n\n"
-                    "This app relies on Application Default Credentials (ADC).\n"
-                    "Authenticate and/or switch identity outside the app (e.g. with gcloud),\n"
-                    "then re-run burf.\n\n"
-                    "Common fix:\n"
-                    "  gcloud auth application-default login\n"
-                ),
+                message=message,
             )
         )
 
@@ -147,31 +173,41 @@ class GSUtilUIApp(App[Any]):
         self, ip: FileListView.InvalidProject
     ) -> None:
         self.action_project_select(
-            f"Invalid Project Name: {ip.project}, please enter a valid project name:"
+            f"Invalid Project/Profile Name: {ip.project}, please enter a valid name:"
         )
 
 
 def main() -> Any | None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "gcs_uri",
+        "uri",
         nargs="?",
-        help="gcs uri to browse: gs://<bucket>/<subdir1>/<subdir2>",
+        help="uri to browse: gs://<bucket>/... or s3://<bucket>/...",
     )
-    parser.add_argument("-p", "--project", help="gcp project to use")
+    parser.add_argument("-p", "--project", help="gcp project or aws profile to use")
 
     args = parser.parse_args()
 
-    if args.gcs_uri:
-        uri = get_gcs_bucket_and_prefix(args.gcs_uri)
+    # Determine initial URI and Storage
+    if args.uri:
+        scheme, uri = parse_uri(args.uri)
     else:
+        # Default behavior: No arg -> root of GCS (or maybe we can improve this later)
+        # For now, default to GCS as requested by "I don't know how should the ux be if they don't pass anything"
+        # We stick to GCS default to preserve behavior unless user explicitly asks for S3 via s3:// or maybe a flag in future
+        scheme = "gs"
         uri = BucketWithPrefix("", [])
 
-    gcp_project = args.project
+    project_or_profile = args.project
 
-    app = GSUtilUIApp(
+    if scheme == "s3":
+        storage = S3(profile=project_or_profile)
+    else:
+        storage = GCS(project=project_or_profile)
+
+    app = BurfApp(
         uri=uri,
-        gcp_project=gcp_project,
+        storage=storage,
     )
 
     return app.run()

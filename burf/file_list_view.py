@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
+from botocore.exceptions import ClientError
 from google.api_core.exceptions import BadRequest, Forbidden
 from google.auth.exceptions import RefreshError
 from textual.binding import Binding
@@ -84,6 +85,12 @@ class FileListView(ListView):
     @property
     def storage(self) -> Storage:
         return self._storage
+
+    @storage.setter
+    def storage(self, new_storage: Storage) -> None:
+        self._storage = new_storage
+        self._listing_service = ListingService(new_storage)
+        self.clear_cache()
 
     @property
     def uri(self) -> BucketWithPrefix:
@@ -196,9 +203,14 @@ class FileListView(ListView):
         if token != self._refresh_token or self.uri != uri_snapshot:
             return
         self.app.set_loading(False)
-        if isinstance(exc, Forbidden) or isinstance(exc, RefreshError):
+        if isinstance(exc, (Forbidden, RefreshError)):
             self.app.post_message(self.AccessForbidden(self, path))
             return
+        if isinstance(exc, ClientError):
+            error_code = exc.response.get("Error", {}).get("Code", "")
+            if error_code in ("AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch"):
+                self.app.post_message(self.AccessForbidden(self, path))
+                return
         if isinstance(exc, BadRequest):
             errors = getattr(exc, "errors", None) or []
             for error in errors:
@@ -217,9 +229,9 @@ class FileListView(ListView):
         uri_snapshot = self.uri
 
         if not uri_snapshot.bucket_name:
-            path = f"list of buckets in project: ({self.storage.get_project()})"
+            path = f"list of buckets in project/profile: ({self.storage.get_project()})"
         else:
-            path = "gs://" + str(uri_snapshot)
+            path = f"{self.storage.scheme}://" + str(uri_snapshot)
 
         cached = self._listing_service.get_cached(uri_snapshot)
         if cached is not None:

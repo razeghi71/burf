@@ -9,6 +9,11 @@ from burf.storage.ds import BucketWithPrefix
 
 
 class Storage(ABC):
+    @property
+    @abstractmethod
+    def scheme(self) -> str:
+        pass
+
     @abstractmethod
     def list_buckets(self) -> List[BucketWithPrefix]:
         pass
@@ -46,6 +51,10 @@ class GCS(Storage):
         self.credentials = credentials
         self.project = project
         self.build_client()
+
+    @property
+    def scheme(self) -> str:
+        return "gs"
 
     def set_credentials(self, credentials: Credentials) -> None:
         self.credentials = credentials
