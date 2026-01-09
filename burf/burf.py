@@ -1,4 +1,5 @@
 import argparse
+import sys
 from typing import Any, Optional
 
 from textual.app import App, ComposeResult
@@ -13,10 +14,24 @@ from burf.error_screen import ErrorScreen
 from burf.file_list_view import FileListView
 from burf.search_box import SearchBox
 from burf.storage.ds import BucketWithPrefix
-from burf.storage.storage import GCS, Storage
-from burf.storage.s3 import S3
+from burf.storage.storage import Storage
 from burf.string_getter import StringGetter
 from burf.util import parse_uri
+
+# Conditional imports
+try:
+    from burf.storage.gcs import GCS
+    HAS_GCS = True
+except ImportError:
+    GCS = None  # type: ignore
+    HAS_GCS = False
+
+try:
+    from burf.storage.s3 import S3
+    HAS_S3 = True
+except ImportError:
+    S3 = None  # type: ignore
+    HAS_S3 = False
 
 
 class BurfApp(App[Any]):
@@ -80,12 +95,10 @@ class BurfApp(App[Any]):
     # screen call-backs
     def change_project(self, project: Optional[str]) -> None:
         if project is not None:
-            if isinstance(self.storage, GCS):
+            if HAS_GCS and isinstance(self.storage, GCS):
                 self.storage.set_project(project)
-            elif isinstance(self.storage, S3):
+            elif HAS_S3 and isinstance(self.storage, S3):
                 # For S3, we treat 'project' as profile
-                # But S3 class doesn't have set_profile, we might need to recreate it or add method
-                # Recreating is safer as session is tied to profile
                 self.storage = S3(profile=project)
                 self.file_list_view.storage = self.storage
             
@@ -97,12 +110,31 @@ class BurfApp(App[Any]):
             scheme, uri = parse_uri(new_addr)
             
             # Check if we need to switch storage backend
-            if scheme == "s3" and not isinstance(self.storage, S3):
-                self.storage = S3()
-                self.file_list_view.storage = self.storage
-            elif scheme == "gs" and not isinstance(self.storage, GCS):
-                self.storage = GCS()
-                self.file_list_view.storage = self.storage
+            if scheme == "s3":
+                if not HAS_S3:
+                    self.push_screen(
+                        ErrorScreen(
+                            title="S3 Not Installed",
+                            message="S3 support is not installed.\n\nPlease install it with:\n  pip install burf[s3]"
+                        )
+                    )
+                    return
+                if not isinstance(self.storage, S3):
+                    self.storage = S3()
+                    self.file_list_view.storage = self.storage
+
+            elif scheme == "gs":
+                if not HAS_GCS:
+                    self.push_screen(
+                        ErrorScreen(
+                            title="GCS Not Installed",
+                            message="GCS support is not installed.\n\nPlease install it with:\n  pip install burf[gcs]"
+                        )
+                    )
+                    return
+                if not isinstance(self.storage, GCS):
+                    self.storage = GCS()
+                    self.file_list_view.storage = self.storage
             
             self.file_list_view.uri = uri
             self.file_list_view.refresh_contents()
@@ -148,7 +180,7 @@ class BurfApp(App[Any]):
         self, af: FileListView.AccessForbidden
     ) -> None:
         message = f"Forbidden to access: {af.path}\n\n"
-        if isinstance(self.storage, GCS):
+        if HAS_GCS and isinstance(self.storage, GCS):
             message += (
                 "This app relies on Application Default Credentials (ADC).\n"
                 "Authenticate and/or switch identity outside the app (e.g. with gcloud),\n"
@@ -156,7 +188,7 @@ class BurfApp(App[Any]):
                 "Common fix:\n"
                 "  gcloud auth application-default login\n"
             )
-        elif isinstance(self.storage, S3):
+        elif HAS_S3 and isinstance(self.storage, S3):
              message += (
                 "Check your AWS credentials/profile.\n"
                 "You might need to run `aws configure` or set AWS_PROFILE.\n"
@@ -199,10 +231,20 @@ def main() -> Any | None:
         uri = BucketWithPrefix("", [])
 
     project_or_profile = args.project
+    storage: Optional[Storage] = None
 
     if scheme == "s3":
+        if not HAS_S3:
+            print("Error: S3 dependencies not found.")
+            print("Please install them with: pip install burf[s3]")
+            sys.exit(1)
         storage = S3(profile=project_or_profile)
     else:
+        # Default to gs
+        if not HAS_GCS:
+            print("Error: GCS dependencies not found.")
+            print("Please install them with: pip install burf[gcs]")
+            sys.exit(1)
         storage = GCS(project=project_or_profile)
 
     app = BurfApp(

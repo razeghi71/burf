@@ -2,9 +2,23 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from botocore.exceptions import ClientError
-from google.api_core.exceptions import BadRequest, Forbidden
-from google.auth.exceptions import RefreshError
+try:
+    from botocore.exceptions import ClientError
+except ImportError:
+    class ClientError(Exception):
+        pass
+
+try:
+    from google.api_core.exceptions import BadRequest, Forbidden
+    from google.auth.exceptions import RefreshError
+except ImportError:
+    class BadRequest(Exception):
+        pass
+    class Forbidden(Exception):
+        pass
+    class RefreshError(Exception):
+        pass
+
 from textual.binding import Binding
 from textual.color import Color
 from textual.containers import Horizontal
@@ -206,7 +220,8 @@ class FileListView(ListView):
         if isinstance(exc, (Forbidden, RefreshError)):
             self.app.post_message(self.AccessForbidden(self, path))
             return
-        if isinstance(exc, ClientError):
+        if hasattr(exc, "response") and isinstance(exc.response, dict):
+            # Check for botocore ClientError structure roughly
             error_code = exc.response.get("Error", {}).get("Code", "")
             if error_code in ("AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch"):
                 self.app.post_message(self.AccessForbidden(self, path))

@@ -11,9 +11,7 @@ requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "Mohammad Razeghi", email = "razeghi71@gmail.com" }]
 dependencies = [
-  "google-cloud-storage==2.10.0",
   "textual==0.28.1",
-  "boto3>=1.28.0",
 ]
 keywords = ["gcs", "google-cloud-storage", "tui", "textual"]
 classifiers = [
@@ -27,6 +25,11 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 
+[project.optional-dependencies]
+gcs = ["google-cloud-storage==2.10.0"]
+s3 = ["boto3>=1.28.0"]
+all = ["google-cloud-storage==2.10.0", "boto3>=1.28.0"]
+
 [project.urls]
 Homepage = "https://github.com/razeghi71/burf"
 Repository = "https://github.com/razeghi71/burf"
@@ -39,4 +42,3 @@ source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["burf"]
-
