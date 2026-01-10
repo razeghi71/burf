@@ -37,35 +37,21 @@ class Storage(ABC):
 
 class GCS(Storage):
     credentials: Optional[Credentials]
-    project: Optional[str]
     client: Client
 
-    def __init__(
-        self, credentials: Optional[Credentials] = None, project: Optional[str] = None
-    ):
+    def __init__(self, credentials: Optional[Credentials] = None):
         self.credentials = credentials
-        self.project = project
         self.build_client()
 
     def set_credentials(self, credentials: Credentials) -> None:
         self.credentials = credentials
         self.build_client()
 
-    def set_project(self, project: str) -> None:
-        self.project = project
-        self.build_client()
-
     def get_project(self) -> str:
-        if self.project is not None:
-            return self.project
-        else:
-            return str(self.client.project)
+        return str(self.client.project)
 
     def build_client(self) -> None:
-        if self.project is not None:
-            self.client = Client(credentials=self.credentials, project=self.project)
-        else:
-            self.client = Client(credentials=self.credentials)
+        self.client = Client(credentials=self.credentials)
 
     def list_buckets(self) -> List[BucketWithPrefix]:
         buckets = self.client.list_buckets()

@@ -20,7 +20,6 @@ from burf.util import get_gcs_bucket_and_prefix
 
 class GSUtilUIApp(App[Any]):
     BINDINGS = [
-        Binding("ctrl+p", "project_select", "select gcp project"),
         Binding("ctrl+g", "go_to", "go to address"),
         Binding("ctrl+d", "download", "download selected"),
         Binding("ctrl+x", "delete", "delete selected"),
@@ -31,9 +30,9 @@ class GSUtilUIApp(App[Any]):
     search_box: SearchBox
     loading_spinner: Label
 
-    def __init__(self, uri: BucketWithPrefix, gcp_project: Optional[str]):
+    def __init__(self, uri: BucketWithPrefix):
         super().__init__()
-        self.storage = GCS(project=gcp_project)
+        self.storage = GCS()
         self.uri = uri
         self._spinner_timer: Timer | None = None
         self._spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
@@ -77,12 +76,6 @@ class GSUtilUIApp(App[Any]):
         self.loading_spinner.update(f"{self._spinner_frames[self._spinner_idx]} Loading…")
 
     # screen call-backs
-    def change_project(self, project: Optional[str]) -> None:
-        if project is not None:
-            self.storage.set_project(project)
-            self.file_list_view.clear_cache()
-            self.file_list_view.refresh_contents()
-
     def change_addr(self, new_addr: Optional[str]) -> None:
         if new_addr is not None:
             uri = get_gcs_bucket_and_prefix(new_addr)
@@ -90,12 +83,6 @@ class GSUtilUIApp(App[Any]):
             self.file_list_view.refresh_contents()
 
     # actions
-    def action_project_select(self, error: Optional[str] = None) -> None:
-        self.push_screen(
-            StringGetter(place_holder="gcp project name", error=error),
-            self.change_project,
-        )
-
     def action_go_to(self) -> None:
         self.push_screen(
             StringGetter(place_holder="gs://bucket_name/subdir1/subdir2"),
@@ -146,8 +133,19 @@ class GSUtilUIApp(App[Any]):
     def on_file_list_view_invalid_project(
         self, ip: FileListView.InvalidProject
     ) -> None:
-        self.action_project_select(
-            f"Invalid Project Name: {ip.project}, please enter a valid project name:"
+        self.push_screen(
+            ErrorScreen(
+                title="Invalid GCP project",
+                message=(
+                    f"GCS returned an invalid project error for project: {ip.project}\n\n"
+                    "This app relies on Application Default Credentials (ADC) and does not\n"
+                    "support changing the project from inside the UI.\n\n"
+                    "Fix the active project outside the app, then re-run burf.\n\n"
+                    "Common fixes:\n"
+                    "  gcloud config set project YOUR_PROJECT_ID\n"
+                    "  export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID\n"
+                ),
+            )
         )
 
 
@@ -158,7 +156,6 @@ def main() -> Any | None:
         nargs="?",
         help="gcs uri to browse: gs://<bucket>/<subdir1>/<subdir2>",
     )
-    parser.add_argument("-p", "--project", help="gcp project to use")
 
     args = parser.parse_args()
 
@@ -167,12 +164,7 @@ def main() -> Any | None:
     else:
         uri = BucketWithPrefix("", [])
 
-    gcp_project = args.project
-
-    app = GSUtilUIApp(
-        uri=uri,
-        gcp_project=gcp_project,
-    )
+    app = GSUtilUIApp(uri=uri)
 
     return app.run()
 
