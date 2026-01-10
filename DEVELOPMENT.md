@@ -2,8 +2,10 @@
 
 ### Local setup
 
+To set up the environment with all optional dependencies (GCS and S3 support):
+
 ```bash
-uv sync
+uv sync --all-extras
 uv run burf --help
 ```
 
@@ -14,4 +16,3 @@ uv run burf --help
   - `major` / `minor` / `patch` (or `semver:*`)
   - **No label = no release**
 - The pushed tag triggers the PyPI publish workflow (using PyPI Trusted Publishing / OIDC).
-
