@@ -4,9 +4,9 @@ from typing import Any, Optional
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Center
+from textual.containers import Center, Horizontal
 from textual.timer import Timer
-from textual.widgets import Footer, Header, Label
+from textual.widgets import Button, Footer, Header, Label
 
 from burf.downloader_screen import DownloaderScreen
 from burf.deleter_screen import DeleterScreen
@@ -32,6 +32,30 @@ try:
 except ImportError:
     S3 = None  # type: ignore
     HAS_S3 = False
+
+
+class StorageSelectionApp(App[str]):
+    CSS = """
+    Screen {
+        align: center middle;
+    }
+    #question {
+        margin-bottom: 2;
+    }
+    Button {
+        margin: 1;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        yield Label("Select Storage Provider", id="question")
+        with Horizontal():
+            yield Button("Google Cloud Storage (GCS)", id="gs", disabled=not HAS_GCS)
+            yield Button("AWS S3", id="s3", disabled=not HAS_S3)
+        yield Footer()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        self.exit(event.button.id)
 
 
 class BurfApp(App[Any]):
@@ -224,11 +248,16 @@ def main() -> Any | None:
     if args.uri:
         scheme, uri = parse_uri(args.uri)
     else:
-        # Default behavior: No arg -> root of GCS (or maybe we can improve this later)
-        # For now, default to GCS as requested by "I don't know how should the ux be if they don't pass anything"
-        # We stick to GCS default to preserve behavior unless user explicitly asks for S3 via s3:// or maybe a flag in future
-        scheme = "gs"
-        uri = CloudPath("gs", "", [])
+        # Ask user for preference
+        if not HAS_GCS and not HAS_S3:
+             print("No storage backends installed. Please install burf[gcs] or burf[s3].")
+             return None
+        
+        selection_app = StorageSelectionApp()
+        scheme = selection_app.run()
+        if scheme is None:
+            return None
+        uri = CloudPath(scheme, "", [])
 
     project_or_profile = args.project
     storage: Optional[Storage] = None
