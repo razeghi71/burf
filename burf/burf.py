@@ -4,58 +4,21 @@ from typing import Any, Optional
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Center, Horizontal
+from textual.containers import Center
 from textual.timer import Timer
-from textual.widgets import Button, Footer, Header, Label
+from textual.widgets import Footer, Header, Label
 
 from burf.downloader_screen import DownloaderScreen
 from burf.deleter_screen import DeleterScreen
 from burf.error_screen import ErrorScreen
 from burf.file_list_view import FileListView
 from burf.search_box import SearchBox
+from burf.storage import GCS, HAS_GCS, HAS_S3, S3
 from burf.storage.ds import CloudPath
 from burf.storage.storage import Storage
+from burf.storage_selection_app import StorageSelectionApp
 from burf.string_getter import StringGetter
 from burf.util import parse_uri
-
-# Conditional imports
-try:
-    from burf.storage.gcs import GCS
-    HAS_GCS = True
-except ImportError:
-    GCS = None  # type: ignore
-    HAS_GCS = False
-
-try:
-    from burf.storage.s3 import S3
-    HAS_S3 = True
-except ImportError:
-    S3 = None  # type: ignore
-    HAS_S3 = False
-
-
-class StorageSelectionApp(App[str]):
-    CSS = """
-    Screen {
-        align: center middle;
-    }
-    #question {
-        margin-bottom: 2;
-    }
-    Button {
-        margin: 1;
-    }
-    """
-
-    def compose(self) -> ComposeResult:
-        yield Label("Select Storage Provider", id="question")
-        with Horizontal():
-            yield Button("Google Cloud Storage (GCS)", id="gs", disabled=not HAS_GCS)
-            yield Button("AWS S3", id="s3", disabled=not HAS_S3)
-        yield Footer()
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        self.exit(event.button.id)
 
 
 class BurfApp(App[Any]):
@@ -78,6 +41,10 @@ class BurfApp(App[Any]):
         self._spinner_timer: Timer | None = None
         self._spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         self._spinner_idx = 0
+
+    @property
+    def current_scheme(self) -> str:
+        return self.storage.scheme
 
     def compose(self) -> ComposeResult:
         self.loading_spinner = Label("", id="loading_spinner")
@@ -119,10 +86,13 @@ class BurfApp(App[Any]):
     # screen call-backs
     def change_project(self, project: Optional[str]) -> None:
         if project is not None:
-            if HAS_GCS and isinstance(self.storage, GCS):
-                self.storage.set_project(project)
-            elif HAS_S3 and isinstance(self.storage, S3):
+            if self.current_scheme == "gs" and HAS_GCS:
+                # GCS specific method
+                if isinstance(self.storage, GCS):
+                    self.storage.set_project(project)
+            elif self.current_scheme == "s3" and HAS_S3:
                 # For S3, we treat 'project' as profile
+                # S3 doesn't have set_project, so we re-instantiate
                 self.storage = S3(profile=project)
                 self.file_list_view.storage = self.storage
             
@@ -143,7 +113,7 @@ class BurfApp(App[Any]):
                         )
                     )
                     return
-                if not isinstance(self.storage, S3):
+                if self.current_scheme != "s3":
                     self.storage = S3()
                     self.file_list_view.storage = self.storage
 
@@ -156,7 +126,7 @@ class BurfApp(App[Any]):
                         )
                     )
                     return
-                if not isinstance(self.storage, GCS):
+                if self.current_scheme != "gs":
                     self.storage = GCS()
                     self.file_list_view.storage = self.storage
             
@@ -204,7 +174,8 @@ class BurfApp(App[Any]):
         self, af: FileListView.AccessForbidden
     ) -> None:
         message = f"Forbidden to access: {af.path}\n\n"
-        if HAS_GCS and isinstance(self.storage, GCS):
+        
+        if self.current_scheme == "gs":
             message += (
                 "This app relies on Application Default Credentials (ADC).\n"
                 "Authenticate and/or switch identity outside the app (e.g. with gcloud),\n"
@@ -212,7 +183,7 @@ class BurfApp(App[Any]):
                 "Common fix:\n"
                 "  gcloud auth application-default login\n"
             )
-        elif HAS_S3 and isinstance(self.storage, S3):
+        elif self.current_scheme == "s3":
              message += (
                 "Check your AWS credentials/profile.\n"
                 "You might need to run `aws configure` or set AWS_PROFILE.\n"
