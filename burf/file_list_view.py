@@ -26,7 +26,7 @@ from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Label, ListItem, ListView
 
-from burf.storage.ds import BucketWithPrefix
+from burf.storage.ds import CloudPath
 from burf.storage.storage import Storage
 from burf.listing_service import ListingService
 from burf.util import RecentDict, human_readable_bytes
@@ -65,13 +65,13 @@ class FileListView(ListView):
         Binding("/", "search", "search"),
     ]
 
-    showing_elems: reactive[List[BucketWithPrefix]] = reactive([])
-    position_cache: RecentDict[BucketWithPrefix, int] = RecentDict(10)
+    showing_elems: reactive[List[CloudPath]] = reactive([])
+    position_cache: RecentDict[CloudPath, int] = RecentDict(10)
 
     def __init__(
         self,
         storage: Storage,
-        uri: BucketWithPrefix = BucketWithPrefix("", []),
+        uri: CloudPath = CloudPath("gs", "", []), # Default to gs scheme for empty
         *children: ListItem,
         initial_index: int | None = 0,
         name: str | None = None,
@@ -107,16 +107,16 @@ class FileListView(ListView):
         self.clear_cache()
 
     @property
-    def uri(self) -> BucketWithPrefix:
+    def uri(self) -> CloudPath:
         return self._uri
 
     @uri.setter
-    def uri(self, new_uri: BucketWithPrefix) -> None:
+    def uri(self, new_uri: CloudPath) -> None:
         self.position_cache[self.uri] = self.index or 0
         self._uri = new_uri
 
     def watch_showing_elems(
-        self, _: List[BucketWithPrefix], new_showing_elems: List[BucketWithPrefix]
+        self, _: List[CloudPath], new_showing_elems: List[CloudPath]
     ) -> None:
         self.clear()
         self.index = 0
@@ -189,10 +189,12 @@ class FileListView(ListView):
         if self.uri.bucket_name != "" and selected_name[-1] != "/":
             return
         elif self.uri.bucket_name == "":
-            self.uri = BucketWithPrefix(selected_name, [])
+            self.uri = CloudPath(self.storage.scheme, selected_name, [])
         else:
-            self.uri = BucketWithPrefix.from_full_prefix(
-                self.uri.bucket_name, selected_name
+            self.uri = CloudPath.from_full_prefix(
+                self.storage.scheme,
+                self.uri.bucket_name,
+                selected_name
             )
 
         self.refresh_contents()
@@ -200,9 +202,9 @@ class FileListView(ListView):
     def _apply_refreshed_listing(
         self,
         *,
-        uri_snapshot: BucketWithPrefix,
+        uri_snapshot: CloudPath,
         token: int,
-        elems: List[BucketWithPrefix],
+        elems: List[CloudPath],
         path: str,
     ) -> None:
         if token != self._refresh_token or self.uri != uri_snapshot:
@@ -212,7 +214,7 @@ class FileListView(ListView):
         self.app.set_loading(False)
 
     def _handle_background_error(
-        self, *, uri_snapshot: BucketWithPrefix, token: int, exc: BaseException, path: str
+        self, *, uri_snapshot: CloudPath, token: int, exc: BaseException, path: str
     ) -> None:
         if token != self._refresh_token or self.uri != uri_snapshot:
             return
@@ -246,7 +248,8 @@ class FileListView(ListView):
         if not uri_snapshot.bucket_name:
             path = f"list of buckets in project/profile: ({self.storage.get_project()})"
         else:
-            path = f"{self.storage.scheme}://" + str(uri_snapshot)
+            # We can use CloudPath's __str__ which includes scheme now
+            path = str(uri_snapshot)
 
         cached = self._listing_service.get_cached(uri_snapshot)
         if cached is not None:
@@ -313,10 +316,10 @@ class FileListView(ListView):
                 self.index = (i + index + 1) % len(self.children)
                 return
 
-    def get_current_uri(self) -> BucketWithPrefix:
+    def get_current_uri(self) -> CloudPath:
         return self.uri
 
-    def get_selected_uri(self) -> Optional[BucketWithPrefix]:
+    def get_selected_uri(self) -> Optional[CloudPath]:
         index = self.index
         if index is None:
             return None

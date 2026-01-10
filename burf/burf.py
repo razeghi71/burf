@@ -13,7 +13,7 @@ from burf.deleter_screen import DeleterScreen
 from burf.error_screen import ErrorScreen
 from burf.file_list_view import FileListView
 from burf.search_box import SearchBox
-from burf.storage.ds import BucketWithPrefix
+from burf.storage.ds import CloudPath
 from burf.storage.storage import Storage
 from burf.string_getter import StringGetter
 from burf.util import parse_uri
@@ -47,7 +47,7 @@ class BurfApp(App[Any]):
     search_box: SearchBox
     loading_spinner: Label
 
-    def __init__(self, uri: BucketWithPrefix, storage: Storage):
+    def __init__(self, uri: CloudPath, storage: Storage):
         super().__init__()
         self.storage = storage
         self.uri = uri
@@ -228,7 +228,7 @@ def main() -> Any | None:
         # For now, default to GCS as requested by "I don't know how should the ux be if they don't pass anything"
         # We stick to GCS default to preserve behavior unless user explicitly asks for S3 via s3:// or maybe a flag in future
         scheme = "gs"
-        uri = BucketWithPrefix("", [])
+        uri = CloudPath("gs", "", [])
 
     project_or_profile = args.project
     storage: Optional[Storage] = None

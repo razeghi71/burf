@@ -3,7 +3,7 @@ import re
 from collections import OrderedDict
 from typing import Any, Generic, TypeVar, Tuple
 
-from burf.storage.ds import BucketWithPrefix
+from burf.storage.ds import CloudPath
 
 
 def human_readable_bytes(size_in_bytes: int) -> str:
@@ -18,9 +18,9 @@ def human_readable_bytes(size_in_bytes: int) -> str:
     return f"{size} {size_name[idx]}"
 
 
-def parse_uri(uri: str) -> Tuple[str, BucketWithPrefix]:
+def parse_uri(uri: str) -> Tuple[str, CloudPath]:
     """
-    Parses a URI and returns the scheme (gs or s3) and the BucketWithPrefix object.
+    Parses a URI and returns the scheme (gs or s3) and the CloudPath object.
     Defaults to gs if no scheme is provided or if scheme is not s3.
     """
     if uri.startswith("s3://"):
@@ -48,17 +48,17 @@ def parse_uri(uri: str) -> Tuple[str, BucketWithPrefix]:
         # If it doesn't match the pattern (e.g. empty string or just slash), handle gracefully
         # If uri_path is empty, it means we are at the root (listing buckets)
         if not uri_path:
-             return scheme, BucketWithPrefix("", [])
+             return scheme, CloudPath(scheme, "", [])
         bucket = uri_path
         prefix = ""
 
-    return scheme, BucketWithPrefix.from_full_prefix(bucket, prefix)
+    return scheme, CloudPath.from_full_prefix(scheme, bucket, prefix)
 
 
-def get_gcs_bucket_and_prefix(gcs_uri: str) -> BucketWithPrefix:
+def get_gcs_bucket_and_prefix(gcs_uri: str) -> CloudPath:
     """Deprecated: Use parse_uri instead."""
-    _, bucket_with_prefix = parse_uri(gcs_uri)
-    return bucket_with_prefix
+    _, cloud_path = parse_uri(gcs_uri)
+    return cloud_path
 
 
 K = TypeVar("K")

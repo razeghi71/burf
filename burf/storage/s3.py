@@ -3,7 +3,7 @@ from typing import List, Optional
 import boto3
 from botocore.exceptions import ClientError
 
-from burf.storage.ds import BucketWithPrefix
+from burf.storage.ds import CloudPath
 from burf.storage.storage import Storage
 
 
@@ -22,18 +22,18 @@ class S3(Storage):
             return self.profile
         return "default"
 
-    def list_buckets(self) -> List[BucketWithPrefix]:
+    def list_buckets(self) -> List[CloudPath]:
         try:
             response = self.client.list_buckets()
             return [
-                BucketWithPrefix(bucket["Name"], [])
+                CloudPath(self.scheme, bucket["Name"], [])
                 for bucket in response.get("Buckets", [])
             ]
         except ClientError:
             # Handle error appropriately, maybe re-raise or return empty list
             return []
 
-    def list_prefix(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
+    def list_prefix(self, uri: CloudPath) -> List[CloudPath]:
         # S3 expects prefix to end with / if we want to list contents of a directory
         prefix = uri.full_prefix
         
@@ -52,8 +52,6 @@ class S3(Storage):
                 # CommonPrefixes represent subdirectories
                 for p in page.get("CommonPrefixes", []):
                     # p['Prefix'] is the full path including current prefix
-                    # We want just the subdirectory name relative to current prefix
-                    # But BucketWithPrefix.from_full_prefix handles the parsing
                     prefixes.append(p["Prefix"])
 
                 # Contents represent files
@@ -63,7 +61,8 @@ class S3(Storage):
                         continue
                         
                     blobs.append(
-                        BucketWithPrefix.from_full_prefix(
+                        CloudPath.from_full_prefix(
+                            scheme=self.scheme,
                             bucket_name=uri.bucket_name,
                             full_prefix=obj["Key"],
                             is_blob=True,
@@ -72,11 +71,10 @@ class S3(Storage):
                         )
                     )
 
-            # Convert prefixes to BucketWithPrefix
-            # We need to extract the subdirectory name. 
-            # BucketWithPrefix.from_full_prefix handles 'a/b/c/' correctly.
+            # Convert prefixes to CloudPath
             dir_list = [
-                BucketWithPrefix.from_full_prefix(
+                CloudPath.from_full_prefix(
+                    scheme=self.scheme,
                     bucket_name=uri.bucket_name,
                     full_prefix=p,
                 )
@@ -89,7 +87,7 @@ class S3(Storage):
              # Handle access denied or other errors
             return []
 
-    def list_all_blobs(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
+    def list_all_blobs(self, uri: CloudPath) -> List[CloudPath]:
         try:
             paginator = self.client.get_paginator("list_objects_v2")
             page_iterator = paginator.paginate(
@@ -101,7 +99,8 @@ class S3(Storage):
             for page in page_iterator:
                 for obj in page.get("Contents", []):
                      blobs.append(
-                        BucketWithPrefix.from_full_prefix(
+                        CloudPath.from_full_prefix(
+                            scheme=self.scheme,
                             bucket_name=uri.bucket_name,
                             full_prefix=obj["Key"],
                             is_blob=True,
@@ -113,13 +112,13 @@ class S3(Storage):
         except ClientError:
             return []
 
-    def download_to_filename(self, uri: BucketWithPrefix, dest: str) -> None:
+    def download_to_filename(self, uri: CloudPath, dest: str) -> None:
         try:
             self.client.download_file(uri.bucket_name, uri.full_prefix, dest)
         except ClientError:
             pass
 
-    def delete_blob(self, uri: BucketWithPrefix) -> None:
+    def delete_blob(self, uri: CloudPath) -> None:
         if not uri.bucket_name or not uri.is_blob:
             raise ValueError("delete_blob expects a blob URI with a bucket name")
 

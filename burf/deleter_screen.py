@@ -7,26 +7,26 @@ from textual.containers import Center, Container, Horizontal, Middle
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Label, ProgressBar
 
-from burf.storage.ds import BucketWithPrefix
+from burf.storage.ds import CloudPath
 from burf.storage.storage import Storage
 
 
 class Deleter:
     def __init__(
         self,
-        uri: BucketWithPrefix,
+        uri: CloudPath,
         storage: Storage,
-        call_before_each_object: Callable[[BucketWithPrefix], Any],
-        call_after_each_object: Callable[[BucketWithPrefix], Any],
+        call_before_each_object: Callable[[CloudPath], Any],
+        call_after_each_object: Callable[[CloudPath], Any],
     ) -> None:
         self.uri = uri
         self.stopped = False
         self._call_before = call_before_each_object
         self._call_after = call_after_each_object
         self._storage = storage
-        self._blobs: Optional[list[BucketWithPrefix]] = None
+        self._blobs: Optional[list[CloudPath]] = None
 
-    def list_blobs(self) -> list[BucketWithPrefix]:
+    def list_blobs(self) -> list[CloudPath]:
         if self._blobs is None:
             if self.uri.is_blob:
                 self._blobs = [self.uri]
@@ -76,7 +76,7 @@ class DeleterScreen(Screen[None]):
 
     def __init__(
         self,
-        delete_uri: BucketWithPrefix,
+        delete_uri: CloudPath,
         storage: Storage,
         name: str | None = None,
         id: str | None = None,
@@ -118,10 +118,10 @@ class DeleterScreen(Screen[None]):
 
         self.app.call_from_thread(_finish)
 
-    def before_delete(self, uri: BucketWithPrefix) -> None:
+    def before_delete(self, uri: CloudPath) -> None:
         self.app.call_from_thread(self.label.update, f"Deleting {uri}…")
 
-    def after_delete(self, uri: BucketWithPrefix) -> None:
+    def after_delete(self, uri: CloudPath) -> None:
         def _update() -> None:
             self.progress.advance(1)
             self.label.update(f"Deleted {uri}")
@@ -139,7 +139,8 @@ class DeleterScreen(Screen[None]):
                 count_note = ""
                 if not self._deleter.uri.is_blob:
                     count_note = " (this will delete all objects under the prefix)"
-                q = f"Proceed deleting {self._deleter._storage.scheme}://{self._deleter.uri}{count_note}?"
+                # Use CloudPath's __str__ which includes scheme
+                q = f"Proceed deleting {self._deleter.uri}{count_note}?"
                 self.question_label = Label(q)
                 yield self.question_label
 

@@ -4,7 +4,7 @@ from google.api_core.exceptions import NotFound
 from google.auth.credentials import Credentials
 from google.cloud.storage import Client  # type: ignore
 
-from burf.storage.ds import BucketWithPrefix
+from burf.storage.ds import CloudPath
 from burf.storage.storage import Storage
 
 
@@ -44,11 +44,11 @@ class GCS(Storage):
         else:
             self.client = Client(credentials=self.credentials)
 
-    def list_buckets(self) -> List[BucketWithPrefix]:
+    def list_buckets(self) -> List[CloudPath]:
         buckets = self.client.list_buckets()
-        return [BucketWithPrefix(bucket.name, []) for bucket in buckets]
+        return [CloudPath(self.scheme, bucket.name, []) for bucket in buckets]
 
-    def list_prefix(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
+    def list_prefix(self, uri: CloudPath) -> List[CloudPath]:
         blobs = self.client.bucket(uri.bucket_name).list_blobs(
             delimiter="/", prefix=uri.full_prefix
         )
@@ -57,14 +57,16 @@ class GCS(Storage):
 
         return sorted(
             [
-                BucketWithPrefix.from_full_prefix(
+                CloudPath.from_full_prefix(
+                    scheme=self.scheme,
                     bucket_name=uri.bucket_name,
                     full_prefix=subdir,
                 )
                 for subdir in blobs.prefixes
             ]
             + [
-                BucketWithPrefix.from_full_prefix(
+                CloudPath.from_full_prefix(
+                    scheme=self.scheme,
                     bucket_name=blob.bucket.name,
                     full_prefix=blob.name,
                     is_blob=True,
@@ -76,10 +78,11 @@ class GCS(Storage):
             key=lambda x: x.full_prefix,
         )
 
-    def list_all_blobs(self, uri: BucketWithPrefix) -> List[BucketWithPrefix]:
+    def list_all_blobs(self, uri: CloudPath) -> List[CloudPath]:
         blobs = self.client.bucket(uri.bucket_name).list_blobs(prefix=uri.full_prefix)
         return [
-            BucketWithPrefix.from_full_prefix(
+            CloudPath.from_full_prefix(
+                scheme=self.scheme,
                 bucket_name=blob.bucket.name,
                 full_prefix=blob.name,
                 is_blob=True,
@@ -89,13 +92,13 @@ class GCS(Storage):
             for blob in blobs
         ]
 
-    def download_to_filename(self, uri: BucketWithPrefix, dest: str) -> None:
+    def download_to_filename(self, uri: CloudPath, dest: str) -> None:
         blob = self.client.bucket(uri.bucket_name).blob(uri.full_prefix)
 
         if blob.exists():
             blob.download_to_filename(dest)
 
-    def delete_blob(self, uri: BucketWithPrefix) -> None:
+    def delete_blob(self, uri: CloudPath) -> None:
         if not uri.bucket_name or not uri.is_blob:
             raise ValueError("delete_blob expects a blob URI with a bucket name")
 

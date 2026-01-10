@@ -5,12 +5,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
-from burf.storage.ds import BucketWithPrefix
+from burf.storage.ds import CloudPath
 from burf.storage.storage import Storage
 from burf.util import RecentDict
 
 
-Listing = list[BucketWithPrefix]
+Listing = list[CloudPath]
 OnSuccess = Callable[[Listing], None]
 OnError = Callable[[BaseException], None]
 
@@ -18,7 +18,7 @@ OnError = Callable[[BaseException], None]
 def _listing_signature(elems: Listing) -> tuple[tuple[str, bool, int | None, str | None], ...]:
     """Build a signature that detects listing changes.
 
-    `BucketWithPrefix.__eq__` intentionally ignores metadata like size/updated_at.
+    `CloudPath.__eq__` intentionally ignores metadata like size/updated_at.
     For refresh-diffing we include that metadata so UI updates when it changes.
     """
     sig: list[tuple[str, bool, int | None, str | None]] = []
@@ -41,20 +41,20 @@ class ListingCacheEntry:
 class ListingService:
     def __init__(self, storage: Storage, *, cache_size: int = 25) -> None:
         self._storage = storage
-        self._cache: RecentDict[BucketWithPrefix, ListingCacheEntry] = RecentDict(cache_size)
+        self._cache: RecentDict[CloudPath, ListingCacheEntry] = RecentDict(cache_size)
         self._lock = threading.Lock()
-        self._generation: dict[BucketWithPrefix, int] = {}
+        self._generation: dict[CloudPath, int] = {}
 
     def clear(self) -> None:
         self._cache.clear()
         with self._lock:
             self._generation.clear()
 
-    def get_cached(self, uri: BucketWithPrefix) -> Optional[Listing]:
+    def get_cached(self, uri: CloudPath) -> Optional[Listing]:
         entry = self._cache.get(uri)
         return entry.elems if entry is not None else None
 
-    def _fetch(self, uri: BucketWithPrefix) -> Listing:
+    def _fetch(self, uri: CloudPath) -> Listing:
         if not uri.bucket_name:
             return self._storage.list_buckets()
         else:
@@ -62,7 +62,7 @@ class ListingService:
 
     def refresh_async(
         self,
-        uri: BucketWithPrefix,
+        uri: CloudPath,
         *,
         on_success: OnSuccess,
         on_error: Optional[OnError] = None,
@@ -100,4 +100,3 @@ class ListingService:
                     on_error(e)
 
         threading.Thread(target=_worker, daemon=True).start()
-

@@ -4,22 +4,24 @@ from datetime import datetime
 from typing import Optional, Sequence
 
 
-class BucketWithPrefix:
+class CloudPath:
     def __init__(
         self,
+        scheme: str,
         bucket_name: str,
         prefixes: Sequence[str],
         is_blob: bool = False,
         size: Optional[int] = None,
         updated_at: Optional[datetime] = None,
     ) -> None:
+        self.scheme = scheme
         self.bucket_name = bucket_name
         self.is_blob = is_blob
         self.size = size
         self.updated_at = updated_at
         if isinstance(prefixes, str):
             raise TypeError(
-                "BucketWithPrefix(prefixes=...) must be a sequence of path parts, not a string"
+                "CloudPath(prefixes=...) must be a sequence of path parts, not a string"
             )
         # Copy into a list so we have a stable internal representation.
         self.prefixes = list(prefixes)
@@ -31,15 +33,17 @@ class BucketWithPrefix:
     @classmethod
     def from_full_prefix(
         cls,
+        scheme: str,
         bucket_name: str,
         full_prefix: str,
         *,
         is_blob: bool = False,
         size: Optional[int] = None,
         updated_at: Optional[datetime] = None,
-    ) -> BucketWithPrefix:
+    ) -> CloudPath:
         """Create from a single string prefix like 'a/b/c/' or 'a/b.txt'."""
         return cls(
+            scheme=scheme,
             bucket_name=bucket_name,
             prefixes=cls.full_prefix_to_list(full_prefix),
             is_blob=is_blob,
@@ -64,13 +68,13 @@ class BucketWithPrefix:
     def is_bucket(self) -> bool:
         return len(self.prefixes) == 0
 
-    def parent(self) -> BucketWithPrefix:
+    def parent(self) -> CloudPath:
         if self.bucket_name == "":
             return self
         if len(self.prefixes) == 0:
-            return BucketWithPrefix("", [])
+            return CloudPath(self.scheme, "", [])
         else:
-            return BucketWithPrefix(self.bucket_name, self.prefixes[:-1])
+            return CloudPath(self.scheme, self.bucket_name, self.prefixes[:-1])
 
     def get_last_part_of_address(self) -> str:
         if self.is_bucket:
@@ -78,12 +82,18 @@ class BucketWithPrefix:
         return self.prefixes[-1]
 
     def __str__(self) -> str:
-        return self.full_path
+        if not self.bucket_name:
+            return f"list of buckets ({self.scheme})"
+        return f"{self.scheme}://{self.full_path}"
 
     def __hash__(self) -> int:
-        return hash(self.full_path)
+        return hash((self.scheme, self.full_path))
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, BucketWithPrefix):
+        if not isinstance(other, CloudPath):
             return False
-        return self.full_path == other.full_path and self.is_blob == other.is_blob
+        return (
+            self.scheme == other.scheme
+            and self.full_path == other.full_path
+            and self.is_blob == other.is_blob
+        )

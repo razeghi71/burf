@@ -8,18 +8,18 @@ from textual.containers import Center, Container, Horizontal, Middle
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Label, ProgressBar
 
-from burf.storage.ds import BucketWithPrefix
+from burf.storage.ds import CloudPath
 from burf.storage.storage import Storage
 
 
 class Downloader:
     def __init__(
         self,
-        uri: BucketWithPrefix,
+        uri: CloudPath,
         storage: Storage,
         destination: str,
-        call_before_each_object: Callable[[BucketWithPrefix, str], Any],
-        call_after_each_object: Callable[[BucketWithPrefix, str], Any],
+        call_before_each_object: Callable[[CloudPath, str], Any],
+        call_after_each_object: Callable[[CloudPath, str], Any],
     ) -> None:
         self.uri = uri
         self.stopped = False
@@ -31,9 +31,9 @@ class Downloader:
                 self.destination, uri.get_last_part_of_address()
             )
         self._storage = storage
-        self._blobs: Optional[list[BucketWithPrefix]] = None
+        self._blobs: Optional[list[CloudPath]] = None
 
-    def list_blobs(self) -> list[BucketWithPrefix]:
+    def list_blobs(self) -> list[CloudPath]:
         if self._blobs is None:
             self._blobs = self._storage.list_all_blobs(self.uri)
         return self._blobs
@@ -93,7 +93,7 @@ class DownloaderScreen(Screen[None]):
 
     def __init__(
         self,
-        download_uri: BucketWithPrefix,
+        download_uri: CloudPath,
         storage: Storage,
         download_to: str = os.getcwd(),
         name: str | None = None,
@@ -132,12 +132,12 @@ class DownloaderScreen(Screen[None]):
 
         self.app.call_from_thread(_finish)
 
-    def before_download(self, uri: BucketWithPrefix, destination: str) -> None:
+    def before_download(self, uri: CloudPath, destination: str) -> None:
         self.app.call_from_thread(
             self.label.update, f"Downloading {uri} -> {destination}"
         )
 
-    def after_download(self, uri: BucketWithPrefix, destination: str) -> None:
+    def after_download(self, uri: CloudPath, destination: str) -> None:
         def _update() -> None:
             self.progress.advance(1)
             self.label.update(f"Downloaded {uri} -> {destination}")
@@ -155,7 +155,7 @@ class DownloaderScreen(Screen[None]):
             with Center():
                 q = (
                     "Proceed downloading "
-                    f"{self._downloader._storage.scheme}://{self._downloader.uri} "
+                    f"{self._downloader.uri} "
                     "=> "
                     f" {self._downloader.destination}"
                 )
