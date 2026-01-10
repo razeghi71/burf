@@ -17,86 +17,76 @@ class S3(Storage):
         return "s3"
 
     def list_buckets(self) -> List[CloudPath]:
-        try:
-            response = self.client.list_buckets()
-            return [
-                CloudPath(self.scheme, bucket["Name"], [])
-                for bucket in response.get("Buckets", [])
-            ]
-        except ClientError:
-            return []
+        response = self.client.list_buckets()
+        return [
+            CloudPath(self.scheme, bucket["Name"], [])
+            for bucket in response.get("Buckets", [])
+        ]
 
     def list_prefix(self, uri: CloudPath) -> List[CloudPath]:
         prefix = uri.full_prefix
         
-        try:
-            paginator = self.client.get_paginator("list_objects_v2")
-            page_iterator = paginator.paginate(
-                Bucket=uri.bucket_name,
-                Prefix=prefix,
-                Delimiter="/",
-            )
+        paginator = self.client.get_paginator("list_objects_v2")
+        page_iterator = paginator.paginate(
+            Bucket=uri.bucket_name,
+            Prefix=prefix,
+            Delimiter="/",
+        )
 
-            prefixes = []
-            blobs = []
+        prefixes = []
+        blobs = []
 
-            for page in page_iterator:
-                for p in page.get("CommonPrefixes", []):
-                    prefixes.append(p["Prefix"])
+        for page in page_iterator:
+            for p in page.get("CommonPrefixes", []):
+                prefixes.append(p["Prefix"])
 
-                for obj in page.get("Contents", []):
-                    if obj["Key"] == prefix:
-                        continue
-                        
-                    blobs.append(
-                        CloudPath.from_full_prefix(
-                            scheme=self.scheme,
-                            bucket_name=uri.bucket_name,
-                            full_prefix=obj["Key"],
-                            is_blob=True,
-                            size=obj["Size"],
-                            updated_at=obj["LastModified"],
-                        )
+            for obj in page.get("Contents", []):
+                if obj["Key"] == prefix:
+                    continue
+                    
+                blobs.append(
+                    CloudPath.from_full_prefix(
+                        scheme=self.scheme,
+                        bucket_name=uri.bucket_name,
+                        full_prefix=obj["Key"],
+                        is_blob=True,
+                        size=obj["Size"],
+                        updated_at=obj["LastModified"],
                     )
-
-            dir_list = [
-                CloudPath.from_full_prefix(
-                    scheme=self.scheme,
-                    bucket_name=uri.bucket_name,
-                    full_prefix=p,
                 )
-                for p in prefixes
-            ]
 
-            return sorted(dir_list + blobs, key=lambda x: x.full_prefix)
+        dir_list = [
+            CloudPath.from_full_prefix(
+                scheme=self.scheme,
+                bucket_name=uri.bucket_name,
+                full_prefix=p,
+            )
+            for p in prefixes
+        ]
 
-        except ClientError:
-            return []
+        return sorted(dir_list + blobs, key=lambda x: x.full_prefix)
 
     def list_all_blobs(self, uri: CloudPath) -> List[CloudPath]:
-        try:
-            paginator = self.client.get_paginator("list_objects_v2")
-            page_iterator = paginator.paginate(
-                Bucket=uri.bucket_name,
-                Prefix=uri.full_prefix
-            )
+        paginator = self.client.get_paginator("list_objects_v2")
+        page_iterator = paginator.paginate(
+            Bucket=uri.bucket_name,
+            Prefix=uri.full_prefix
+        )
 
-            blobs = []
-            for page in page_iterator:
-                for obj in page.get("Contents", []):
-                     blobs.append(
-                        CloudPath.from_full_prefix(
-                            scheme=self.scheme,
-                            bucket_name=uri.bucket_name,
-                            full_prefix=obj["Key"],
-                            is_blob=True,
-                            size=obj["Size"],
-                            updated_at=obj["LastModified"],
-                        )
+        blobs = []
+        for page in page_iterator:
+            for obj in page.get("Contents", []):
+                    blobs.append(
+                    CloudPath.from_full_prefix(
+                        scheme=self.scheme,
+                        bucket_name=uri.bucket_name,
+                        full_prefix=obj["Key"],
+                        is_blob=True,
+                        size=obj["Size"],
+                        updated_at=obj["LastModified"],
                     )
-            return blobs
-        except ClientError:
-            return []
+                )
+        return blobs
 
     def download_to_filename(self, uri: CloudPath, dest: str) -> None:
         try:
