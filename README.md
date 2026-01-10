@@ -71,6 +71,7 @@ Or set the environment variable:
 
 ## Key Bindings
 
+- `Ctrl+s`: Select storage provider (switch between GCS and S3)
 - `Ctrl+g`: Go to a specific address (URI)
 - `Ctrl+d`: Download selected item(s)
 - `Ctrl+x`: Delete selected item(s)
