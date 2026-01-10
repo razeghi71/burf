@@ -1,6 +1,3 @@
-import sys
-from typing import Optional
-
 from burf.storage import GCS, HAS_GCS, HAS_S3, S3
 from burf.storage.storage import Storage
 
