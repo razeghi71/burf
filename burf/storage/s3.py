@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 import boto3
 from botocore.exceptions import ClientError
@@ -8,21 +8,14 @@ from burf.storage.storage import Storage
 
 
 class S3(Storage):
-    def __init__(self, profile: Optional[str] = None):
-        # Even though we remove explicit profile switching, we accept it for compatibility
-        # if provided by StorageFactory, but we can default to None/environment.
-        self.profile = profile
-        self.session = boto3.Session(profile_name=profile)
+    def __init__(self) -> None:
+        # Relies on environment/default profile for credentials.
+        self.session = boto3.Session()
         self.client = self.session.client("s3")
 
     @property
     def scheme(self) -> str:
         return "s3"
-
-    def get_project(self) -> str:
-        if self.profile:
-            return self.profile
-        return "default"
 
     def list_buckets(self) -> List[CloudPath]:
         try:

@@ -23,10 +23,6 @@ class Storage(ABC):
         pass
 
     @abstractmethod
-    def get_project(self) -> str:
-        pass
-
-    @abstractmethod
     def download_to_filename(self, uri: CloudPath, dest: str) -> None:
         pass
 

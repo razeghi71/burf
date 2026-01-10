@@ -215,11 +215,6 @@ class FileListView(ListView):
             if error_code in ("AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch"):
                 self.app.post_message(self.AccessForbidden(self, path))
                 return
-        # We removed explicit project switching, so invalid project errors
-        # (if any remain) are treated as generic background errors for now,
-        # or we could surface them as AccessForbidden too.
-        # Previously we had InvalidProject handler here.
-        
         # For other background errors, keep existing contents (best-effort).
 
     def refresh_contents(self) -> bool:
@@ -229,9 +224,9 @@ class FileListView(ListView):
         uri_snapshot = self.uri
 
         if not uri_snapshot.bucket_name:
-            path = f"list of buckets in project/profile: ({self.storage.get_project()})"
+            # We don't display project/profile name anymore since switching is removed
+            path = f"list of buckets ({self.storage.scheme})"
         else:
-            # We can use CloudPath's __str__ which includes scheme now
             path = str(uri_snapshot)
 
         cached = self._listing_service.get_cached(uri_snapshot)
