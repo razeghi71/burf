@@ -3,6 +3,7 @@ from typing import List
 import boto3
 from botocore.exceptions import ClientError
 
+from burf.scheme import StorageScheme
 from burf.storage.ds import CloudPath
 from burf.storage.storage import Storage
 
@@ -13,8 +14,8 @@ class S3(Storage):
         self.client = self.session.client("s3")
 
     @property
-    def scheme(self) -> str:
-        return "s3"
+    def scheme(self) -> StorageScheme:
+        return StorageScheme.S3
 
     def list_buckets(self) -> List[CloudPath]:
         response = self.client.list_buckets()

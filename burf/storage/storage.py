@@ -1,13 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import List
 
+from burf.scheme import StorageScheme
 from burf.storage.ds import CloudPath
 
 
 class Storage(ABC):
     @property
     @abstractmethod
-    def scheme(self) -> str:
+    def scheme(self) -> StorageScheme:
         pass
 
     @abstractmethod

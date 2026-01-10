@@ -1,20 +1,23 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
+
+from burf.scheme import StorageScheme
 
 
 class CloudPath:
     def __init__(
         self,
-        scheme: str,
+        scheme: Union[str, StorageScheme],
         bucket_name: str,
         prefixes: Sequence[str],
         is_blob: bool = False,
         size: Optional[int] = None,
         updated_at: Optional[datetime] = None,
     ) -> None:
-        self.scheme = scheme
+        # Normalize string to Enum if needed
+        self.scheme = StorageScheme(scheme) if isinstance(scheme, str) else scheme
         self.bucket_name = bucket_name
         self.is_blob = is_blob
         self.size = size
@@ -33,7 +36,7 @@ class CloudPath:
     @classmethod
     def from_full_prefix(
         cls,
-        scheme: str,
+        scheme: Union[str, StorageScheme],
         bucket_name: str,
         full_prefix: str,
         *,
@@ -83,8 +86,8 @@ class CloudPath:
 
     def __str__(self) -> str:
         if not self.bucket_name:
-            return f"list of buckets ({self.scheme})"
-        return f"{self.scheme}://{self.full_path}"
+            return f"list of buckets ({self.scheme.value})"
+        return f"{self.scheme.value}://{self.full_path}"
 
     def __hash__(self) -> int:
         return hash((self.scheme, self.full_path))

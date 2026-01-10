@@ -3,6 +3,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Label
 
+from burf.scheme import StorageScheme
 from burf.storage import HAS_GCS, HAS_S3
 
 
@@ -41,9 +42,13 @@ class StorageSelectionScreen(Screen[str]):
             yield Label("Select Storage Provider", id="question")
             with Horizontal():
                 yield Button(
-                    "Google Cloud Storage (GCS)", id="gs", disabled=not HAS_GCS
+                    "Google Cloud Storage (GCS)",
+                    id=StorageScheme.GCS.value,
+                    disabled=not HAS_GCS,
                 )
-                yield Button("AWS S3", id="s3", disabled=not HAS_S3)
+                yield Button(
+                    "AWS S3", id=StorageScheme.S3.value, disabled=not HAS_S3
+                )
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

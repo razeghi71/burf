@@ -1,6 +1,6 @@
 import argparse
 import sys
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -13,6 +13,7 @@ from burf.deleter_screen import DeleterScreen
 from burf.error_screen import ErrorScreen
 from burf.factory import StorageFactory
 from burf.file_list_view import FileListView
+from burf.scheme import StorageScheme
 from burf.search_box import SearchBox
 from burf.storage import HAS_GCS, HAS_S3
 from burf.storage.ds import CloudPath
@@ -44,7 +45,7 @@ class BurfApp(App[Any]):
         self._spinner_idx = 0
 
     @property
-    def current_scheme(self) -> str:
+    def current_scheme(self) -> StorageScheme:
         return self.storage.scheme
 
     def compose(self) -> ComposeResult:
@@ -97,7 +98,7 @@ class BurfApp(App[Any]):
                 except ImportError as e:
                     self.push_screen(
                         ErrorScreen(
-                            title=f"{scheme.upper()} Not Installed",
+                            title=f"{scheme.value.upper()} Not Installed",
                             message=str(e)
                         )
                     )
@@ -114,8 +115,17 @@ class BurfApp(App[Any]):
             self.file_list_view.uri = uri
             self.file_list_view.refresh_contents()
 
-    def change_scheme(self, scheme: Optional[str]) -> None:
+    def change_scheme(self, scheme: Optional[Union[str, StorageScheme]]) -> None:
         if scheme is not None:
+            if isinstance(scheme, str):
+                try:
+                    scheme = StorageScheme(scheme)
+                except ValueError:
+                     self.push_screen(
+                        ErrorScreen(title="Invalid Scheme", message=f"Unknown scheme: {scheme}")
+                    )
+                     return
+
             if scheme == self.current_scheme:
                 # If same scheme, just go to root
                 self.file_list_view.uri = CloudPath(scheme, "", [])
@@ -131,7 +141,7 @@ class BurfApp(App[Any]):
             except ImportError as e:
                 self.push_screen(
                     ErrorScreen(
-                        title=f"{scheme.upper()} Not Installed",
+                        title=f"{scheme.value.upper()} Not Installed",
                         message=str(e)
                     )
                 )
@@ -186,7 +196,7 @@ class BurfApp(App[Any]):
     ) -> None:
         message = f"Forbidden to access: {af.path}\n\n"
         
-        if self.current_scheme == "gs":
+        if self.current_scheme == StorageScheme.GCS:
             message += (
                 "This app relies on Application Default Credentials (ADC).\n"
                 "Authenticate and/or switch identity outside the app (e.g. with gcloud),\n"
@@ -194,7 +204,7 @@ class BurfApp(App[Any]):
                 "Common fix:\n"
                 "  gcloud auth application-default login\n"
             )
-        elif self.current_scheme == "s3":
+        elif self.current_scheme == StorageScheme.S3:
              message += (
                 "Check your AWS credentials/profile.\n"
                 "You might need to run `aws configure` or set AWS_PROFILE.\n"
@@ -228,9 +238,10 @@ def main() -> Any | None:
              return None
         
         selection_app = StorageSelectionApp()
-        scheme = selection_app.run()
-        if scheme is None:
+        scheme_str = selection_app.run()
+        if scheme_str is None:
             return None
+        scheme = StorageScheme(scheme_str)
         uri = CloudPath(scheme, "", [])
     
     try:

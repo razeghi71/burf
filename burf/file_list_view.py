@@ -26,6 +26,7 @@ from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Label, ListItem, ListView
 
+from burf.scheme import StorageScheme
 from burf.storage.ds import CloudPath
 from burf.storage.storage import Storage
 from burf.listing_service import ListingService
@@ -58,7 +59,7 @@ class FileListView(ListView):
     def __init__(
         self,
         storage: Storage,
-        uri: CloudPath = CloudPath("gs", "", []), # Default to gs scheme for empty
+        uri: CloudPath = CloudPath(StorageScheme.GCS, "", []), # Default to gs scheme for empty
         *children: ListItem,
         initial_index: int | None = 0,
         name: str | None = None,
@@ -225,8 +226,9 @@ class FileListView(ListView):
 
         if not uri_snapshot.bucket_name:
             # We don't display project/profile name anymore since switching is removed
-            path = f"list of buckets ({self.storage.scheme})"
+            path = f"list of buckets ({self.storage.scheme.value})"
         else:
+            # We can use CloudPath's __str__ which includes scheme now
             path = str(uri_snapshot)
 
         cached = self._listing_service.get_cached(uri_snapshot)

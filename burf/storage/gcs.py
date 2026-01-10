@@ -4,6 +4,7 @@ from google.api_core.exceptions import NotFound
 from google.auth.credentials import Credentials
 from google.cloud.storage import Client  # type: ignore
 
+from burf.scheme import StorageScheme
 from burf.storage.ds import CloudPath
 from burf.storage.storage import Storage
 
@@ -24,8 +25,8 @@ class GCS(Storage):
         self.build_client()
 
     @property
-    def scheme(self) -> str:
-        return "gs"
+    def scheme(self) -> StorageScheme:
+        return StorageScheme.GCS
 
     def set_credentials(self, credentials: Credentials) -> None:
         self.credentials = credentials
