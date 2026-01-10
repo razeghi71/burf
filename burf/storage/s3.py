@@ -9,7 +9,6 @@ from burf.storage.storage import Storage
 
 class S3(Storage):
     def __init__(self) -> None:
-        # Relies on environment/default profile for credentials.
         self.session = boto3.Session()
         self.client = self.session.client("s3")
 
@@ -25,11 +24,9 @@ class S3(Storage):
                 for bucket in response.get("Buckets", [])
             ]
         except ClientError:
-            # Handle error appropriately, maybe re-raise or return empty list
             return []
 
     def list_prefix(self, uri: CloudPath) -> List[CloudPath]:
-        # S3 expects prefix to end with / if we want to list contents of a directory
         prefix = uri.full_prefix
         
         try:
@@ -44,14 +41,10 @@ class S3(Storage):
             blobs = []
 
             for page in page_iterator:
-                # CommonPrefixes represent subdirectories
                 for p in page.get("CommonPrefixes", []):
-                    # p['Prefix'] is the full path including current prefix
                     prefixes.append(p["Prefix"])
 
-                # Contents represent files
                 for obj in page.get("Contents", []):
-                    # Skip if it is the current directory itself (sometimes S3 returns it)
                     if obj["Key"] == prefix:
                         continue
                         
@@ -66,7 +59,6 @@ class S3(Storage):
                         )
                     )
 
-            # Convert prefixes to CloudPath
             dir_list = [
                 CloudPath.from_full_prefix(
                     scheme=self.scheme,
@@ -79,7 +71,6 @@ class S3(Storage):
             return sorted(dir_list + blobs, key=lambda x: x.full_prefix)
 
         except ClientError:
-             # Handle access denied or other errors
             return []
 
     def list_all_blobs(self, uri: CloudPath) -> List[CloudPath]:
