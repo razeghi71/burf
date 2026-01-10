@@ -93,6 +93,10 @@ class FileListView(ListView):
         self._storage = new_storage
         self._listing_service = ListingService(new_storage)
         self.clear_cache()
+        # When storage changes, we should clear the current view to avoid
+        # displaying stale items from the previous storage backend while
+        # the new listing is being fetched.
+        self.showing_elems = []
 
     @property
     def uri(self) -> CloudPath:
