@@ -51,7 +51,12 @@ class ListingService:
             self._generation.clear()
 
     def get_cached(self, uri: CloudPath) -> Optional[Listing]:
-        entry = self._cache.get(uri)
+        # We must acquire lock here?
+        # RecentDict is generally not thread safe for read/write mix, but here we just read.
+        # But if _worker is writing to it...
+        # RecentDict inherits from OrderedDict.
+        with self._lock:
+            entry = self._cache.get(uri)
         return entry.elems if entry is not None else None
 
     def _fetch(self, uri: CloudPath) -> Listing:
@@ -75,8 +80,8 @@ class ListingService:
         with self._lock:
             gen = self._generation.get(uri, 0) + 1
             self._generation[uri] = gen
-            cached = self._cache.get(uri)
-            cached_sig = cached.signature if cached is not None else None
+            entry = self._cache.get(uri)
+            cached_sig = entry.signature if entry is not None else None
 
         def _worker() -> None:
             try:

@@ -95,6 +95,8 @@ class BurfApp(App[Any]):
                 try:
                     self.storage = StorageFactory.create_storage(scheme)
                     self.file_list_view.storage = self.storage
+                    # Clear stale items immediately when switching storage
+                    self.file_list_view.showing_elems = []
                 except ImportError as e:
                     self.push_screen(
                         ErrorScreen(
@@ -135,6 +137,8 @@ class BurfApp(App[Any]):
             try:
                 self.storage = StorageFactory.create_storage(scheme)
                 self.file_list_view.storage = self.storage
+                # Clear stale items immediately when switching storage
+                self.file_list_view.showing_elems = []
                 # Reset to root of that storage
                 self.file_list_view.uri = CloudPath(scheme, "", [])
                 self.file_list_view.refresh_contents()
