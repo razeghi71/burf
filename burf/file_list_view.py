@@ -46,19 +46,6 @@ class FileListView(ListView):
         def control(self) -> FileListView:
             return self.file_list_view
 
-    class InvalidProject(Message, bubble=True):
-        project: str
-        file_list_view: FileListView
-
-        def __init__(self, file_list_view: FileListView, project: str) -> None:
-            super().__init__()
-            self.file_list_view = file_list_view
-            self.project = project
-
-        @property
-        def control(self) -> FileListView:
-            return self.file_list_view
-
     BINDINGS = [
         Binding("enter", "select_cursor", "Select"),
         Binding("backspace", "back", "Parent"),
@@ -228,15 +215,11 @@ class FileListView(ListView):
             if error_code in ("AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch"):
                 self.app.post_message(self.AccessForbidden(self, path))
                 return
-        if isinstance(exc, BadRequest):
-            errors = getattr(exc, "errors", None) or []
-            for error in errors:
-                message = ""
-                if isinstance(error, dict):
-                    message = str(error.get("message", ""))
-                if "Invalid project" in message:
-                    self.app.post_message(self.InvalidProject(self, self.storage.get_project()))
-                    return
+        # We removed explicit project switching, so invalid project errors
+        # (if any remain) are treated as generic background errors for now,
+        # or we could surface them as AccessForbidden too.
+        # Previously we had InvalidProject handler here.
+        
         # For other background errors, keep existing contents (best-effort).
 
     def refresh_contents(self) -> bool:

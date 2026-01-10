@@ -24,7 +24,6 @@ from burf.util import parse_uri
 
 class BurfApp(App[Any]):
     BINDINGS = [
-        Binding("ctrl+p", "project_select", "select gcp project/aws profile"),
         Binding("ctrl+g", "go_to", "go to address"),
         Binding("ctrl+d", "download", "download selected"),
         Binding("ctrl+x", "delete", "delete selected"),
@@ -90,20 +89,6 @@ class BurfApp(App[Any]):
         self.loading_spinner.update(f"{self._spinner_frames[self._spinner_idx]} Loading…")
 
     # screen call-backs
-    def change_project(self, project: Optional[str]) -> None:
-        if project is not None:
-            if self.current_scheme == "gs":
-                # We can safely assume it is GCS because of current_scheme impl
-                # Type checker might need ignore or cast, but runtime is safe.
-                self.storage.set_project(project) # type: ignore
-            elif self.current_scheme == "s3":
-                # For S3, we treat 'project' as profile
-                self.storage = StorageFactory.create_storage("s3", project_or_profile=project)
-                self.file_list_view.storage = self.storage
-            
-            self.file_list_view.clear_cache()
-            self.file_list_view.refresh_contents()
-
     def change_addr(self, new_addr: Optional[str]) -> None:
         if new_addr is not None:
             scheme, uri = parse_uri(new_addr)
@@ -134,12 +119,6 @@ class BurfApp(App[Any]):
             self.file_list_view.refresh_contents()
 
     # actions
-    def action_project_select(self, error: Optional[str] = None) -> None:
-        self.push_screen(
-            StringGetter(place_holder="gcp project name / aws profile", error=error),
-            self.change_project,
-        )
-
     def action_go_to(self) -> None:
         self.push_screen(
             StringGetter(place_holder="gs://bucket/path or s3://bucket/path"),
@@ -196,13 +175,6 @@ class BurfApp(App[Any]):
             )
         )
 
-    def on_file_list_view_invalid_project(
-        self, ip: FileListView.InvalidProject
-    ) -> None:
-        self.action_project_select(
-            f"Invalid Project/Profile Name: {ip.project}, please enter a valid name:"
-        )
-
 
 def main() -> Any | None:
     parser = argparse.ArgumentParser()
@@ -211,7 +183,6 @@ def main() -> Any | None:
         nargs="?",
         help="uri to browse: gs://<bucket>/... or s3://<bucket>/...",
     )
-    parser.add_argument("-p", "--project", help="gcp project or aws profile to use")
 
     args = parser.parse_args()
 
@@ -229,11 +200,9 @@ def main() -> Any | None:
         if scheme is None:
             return None
         uri = CloudPath(scheme, "", [])
-
-    project_or_profile = args.project
     
     try:
-        storage = StorageFactory.create_storage(scheme, project_or_profile=project_or_profile)
+        storage = StorageFactory.create_storage(scheme)
     except (ImportError, ValueError) as e:
         print(f"Error: {e}")
         sys.exit(1)

@@ -9,6 +9,8 @@ from burf.storage.storage import Storage
 
 class S3(Storage):
     def __init__(self, profile: Optional[str] = None):
+        # Even though we remove explicit profile switching, we accept it for compatibility
+        # if provided by StorageFactory, but we can default to None/environment.
         self.profile = profile
         self.session = boto3.Session(profile_name=profile)
         self.client = self.session.client("s3")

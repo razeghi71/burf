@@ -17,6 +17,9 @@ class GCS(Storage):
         self, credentials: Optional[Credentials] = None, project: Optional[str] = None
     ):
         self.credentials = credentials
+        # Although we remove explicit project switching, we might still want to respect
+        # a project passed during initialization if provided, or default to None
+        # so Client() picks up ADC default.
         self.project = project
         self.build_client()
 
@@ -28,10 +31,6 @@ class GCS(Storage):
         self.credentials = credentials
         self.build_client()
 
-    def set_project(self, project: str) -> None:
-        self.project = project
-        self.build_client()
-
     def get_project(self) -> str:
         if self.project is not None:
             return self.project
@@ -39,6 +38,7 @@ class GCS(Storage):
             return str(self.client.project)
 
     def build_client(self) -> None:
+        # If project is None, Client() uses ADC default project.
         if self.project is not None:
             self.client = Client(credentials=self.credentials, project=self.project)
         else:

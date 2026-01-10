@@ -9,13 +9,12 @@ class StorageFactory:
     """Factory for creating Storage instances based on scheme."""
 
     @staticmethod
-    def create_storage(scheme: str, project_or_profile: Optional[str] = None) -> Storage:
+    def create_storage(scheme: str) -> Storage:
         """
         Creates a Storage instance for the given scheme.
         
         Args:
             scheme: 'gs' or 's3'
-            project_or_profile: Optional project ID (for GCS) or profile name (for S3)
             
         Returns:
             Storage instance
@@ -29,14 +28,14 @@ class StorageFactory:
                 raise ImportError(
                     "S3 dependencies not found. Please install them with: pip install burf[s3]"
                 )
-            return S3(profile=project_or_profile)
+            return S3()
         
         elif scheme == "gs":
             if not HAS_GCS:
                 raise ImportError(
                     "GCS dependencies not found. Please install them with: pip install burf[gcs]"
                 )
-            return GCS(project=project_or_profile)
+            return GCS()
             
         else:
             raise ValueError(f"Unknown storage scheme: {scheme}")
