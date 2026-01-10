@@ -44,7 +44,12 @@ class BurfApp(App[Any]):
 
     @property
     def current_scheme(self) -> str:
-        return self.storage.scheme
+        # Determine scheme based on instance type
+        if HAS_GCS and isinstance(self.storage, GCS):
+            return "gs"
+        if HAS_S3 and isinstance(self.storage, S3):
+            return "s3"
+        return "unknown"
 
     def compose(self) -> ComposeResult:
         self.loading_spinner = Label("", id="loading_spinner")
@@ -86,13 +91,12 @@ class BurfApp(App[Any]):
     # screen call-backs
     def change_project(self, project: Optional[str]) -> None:
         if project is not None:
-            if self.current_scheme == "gs" and HAS_GCS:
-                # GCS specific method
-                if isinstance(self.storage, GCS):
-                    self.storage.set_project(project)
-            elif self.current_scheme == "s3" and HAS_S3:
+            if self.current_scheme == "gs":
+                # We can safely assume it is GCS because of current_scheme impl
+                # Type checker might need ignore or cast, but runtime is safe.
+                self.storage.set_project(project) # type: ignore
+            elif self.current_scheme == "s3":
                 # For S3, we treat 'project' as profile
-                # S3 doesn't have set_project, so we re-instantiate
                 self.storage = S3(profile=project)
                 self.file_list_view.storage = self.storage
             
