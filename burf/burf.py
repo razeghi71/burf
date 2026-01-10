@@ -14,7 +14,7 @@ from burf.error_screen import ErrorScreen
 from burf.factory import StorageFactory
 from burf.file_list_view import FileListView
 from burf.search_box import SearchBox
-from burf.storage import GCS, HAS_GCS, HAS_S3, S3
+from burf.storage import HAS_GCS, HAS_S3
 from burf.storage.ds import CloudPath
 from burf.storage.storage import Storage
 from burf.storage_selection_app import StorageSelectionApp, StorageSelectionScreen
@@ -45,12 +45,7 @@ class BurfApp(App[Any]):
 
     @property
     def current_scheme(self) -> str:
-        # Determine scheme based on instance type
-        if HAS_GCS and isinstance(self.storage, GCS):
-            return "gs"
-        if HAS_S3 and isinstance(self.storage, S3):
-            return "s3"
-        return "unknown"
+        return self.storage.scheme
 
     def compose(self) -> ComposeResult:
         self.loading_spinner = Label("", id="loading_spinner")
