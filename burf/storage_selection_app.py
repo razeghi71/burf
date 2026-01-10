@@ -1,13 +1,14 @@
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
+from textual.screen import Screen
 from textual.widgets import Button, Footer, Label
 
 from burf.storage import HAS_GCS, HAS_S3
 
 
-class StorageSelectionApp(App[str]):
+class StorageSelectionScreen(Screen[str]):
     CSS = """
-    Screen {
+    StorageSelectionScreen {
         align: center middle;
     }
 
@@ -47,4 +48,9 @@ class StorageSelectionApp(App[str]):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id:
-            self.exit(event.button.id)
+            self.dismiss(event.button.id)
+
+
+class StorageSelectionApp(App[str]):
+    def on_mount(self) -> None:
+        self.push_screen(StorageSelectionScreen(), callback=self.exit)

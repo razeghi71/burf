@@ -17,13 +17,14 @@ from burf.search_box import SearchBox
 from burf.storage import GCS, HAS_GCS, HAS_S3, S3
 from burf.storage.ds import CloudPath
 from burf.storage.storage import Storage
-from burf.storage_selection_app import StorageSelectionApp
+from burf.storage_selection_app import StorageSelectionApp, StorageSelectionScreen
 from burf.string_getter import StringGetter
 from burf.util import parse_uri
 
 
 class BurfApp(App[Any]):
     BINDINGS = [
+        Binding("ctrl+s", "select_storage", "select storage provider"),
         Binding("ctrl+g", "go_to", "go to address"),
         Binding("ctrl+d", "download", "download selected"),
         Binding("ctrl+x", "delete", "delete selected"),
@@ -118,7 +119,43 @@ class BurfApp(App[Any]):
             self.file_list_view.uri = uri
             self.file_list_view.refresh_contents()
 
+    def change_scheme(self, scheme: Optional[str]) -> None:
+        if scheme is not None:
+            if scheme == self.current_scheme:
+                # If same scheme, just go to root
+                self.file_list_view.uri = CloudPath(scheme, "", [])
+                self.file_list_view.refresh_contents()
+                return
+            
+            try:
+                self.storage = StorageFactory.create_storage(scheme)
+                self.file_list_view.storage = self.storage
+                # Reset to root of that storage
+                self.file_list_view.uri = CloudPath(scheme, "", [])
+                self.file_list_view.refresh_contents()
+            except ImportError as e:
+                self.push_screen(
+                    ErrorScreen(
+                        title=f"{scheme.upper()} Not Installed",
+                        message=str(e)
+                    )
+                )
+            except ValueError as e:
+                self.push_screen(
+                    ErrorScreen(
+                        title="Invalid Scheme",
+                        message=str(e)
+                    )
+                )
+
     # actions
+    def action_select_storage(self) -> None:
+        def handle_selection(scheme: str | None) -> None:
+            if scheme:
+                self.change_scheme(scheme)
+
+        self.push_screen(StorageSelectionScreen(), handle_selection)
+
     def action_go_to(self) -> None:
         self.push_screen(
             StringGetter(place_holder="gs://bucket/path or s3://bucket/path"),
