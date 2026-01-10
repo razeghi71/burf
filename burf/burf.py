@@ -11,6 +11,7 @@ from textual.widgets import Footer, Header, Label
 from burf.downloader_screen import DownloaderScreen
 from burf.deleter_screen import DeleterScreen
 from burf.error_screen import ErrorScreen
+from burf.factory import StorageFactory
 from burf.file_list_view import FileListView
 from burf.search_box import SearchBox
 from burf.storage import GCS, HAS_GCS, HAS_S3, S3
@@ -97,7 +98,7 @@ class BurfApp(App[Any]):
                 self.storage.set_project(project) # type: ignore
             elif self.current_scheme == "s3":
                 # For S3, we treat 'project' as profile
-                self.storage = S3(profile=project)
+                self.storage = StorageFactory.create_storage("s3", project_or_profile=project)
                 self.file_list_view.storage = self.storage
             
             self.file_list_view.clear_cache()
@@ -108,32 +109,27 @@ class BurfApp(App[Any]):
             scheme, uri = parse_uri(new_addr)
             
             # Check if we need to switch storage backend
-            if scheme == "s3":
-                if not HAS_S3:
+            if scheme != self.current_scheme:
+                try:
+                    self.storage = StorageFactory.create_storage(scheme)
+                    self.file_list_view.storage = self.storage
+                except ImportError as e:
                     self.push_screen(
                         ErrorScreen(
-                            title="S3 Not Installed",
-                            message="S3 support is not installed.\n\nPlease install it with:\n  pip install burf[s3]"
+                            title=f"{scheme.upper()} Not Installed",
+                            message=str(e)
                         )
                     )
                     return
-                if self.current_scheme != "s3":
-                    self.storage = S3()
-                    self.file_list_view.storage = self.storage
+                except ValueError as e:
+                     self.push_screen(
+                        ErrorScreen(
+                            title="Invalid Scheme",
+                            message=str(e)
+                        )
+                    )
+                     return
 
-            elif scheme == "gs":
-                if not HAS_GCS:
-                    self.push_screen(
-                        ErrorScreen(
-                            title="GCS Not Installed",
-                            message="GCS support is not installed.\n\nPlease install it with:\n  pip install burf[gcs]"
-                        )
-                    )
-                    return
-                if self.current_scheme != "gs":
-                    self.storage = GCS()
-                    self.file_list_view.storage = self.storage
-            
             self.file_list_view.uri = uri
             self.file_list_view.refresh_contents()
 
@@ -235,21 +231,12 @@ def main() -> Any | None:
         uri = CloudPath(scheme, "", [])
 
     project_or_profile = args.project
-    storage: Optional[Storage] = None
-
-    if scheme == "s3":
-        if not HAS_S3:
-            print("Error: S3 dependencies not found.")
-            print("Please install them with: pip install burf[s3]")
-            sys.exit(1)
-        storage = S3(profile=project_or_profile)
-    else:
-        # Default to gs
-        if not HAS_GCS:
-            print("Error: GCS dependencies not found.")
-            print("Please install them with: pip install burf[gcs]")
-            sys.exit(1)
-        storage = GCS(project=project_or_profile)
+    
+    try:
+        storage = StorageFactory.create_storage(scheme, project_or_profile=project_or_profile)
+    except (ImportError, ValueError) as e:
+        print(f"Error: {e}")
+        sys.exit(1)
 
     app = BurfApp(
         uri=uri,
