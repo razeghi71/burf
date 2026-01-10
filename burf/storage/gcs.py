@@ -44,11 +44,20 @@ class GCS(Storage):
         return [CloudPath(self.scheme, bucket.name, []) for bucket in buckets]
 
     def list_prefix(self, uri: CloudPath) -> List[CloudPath]:
-        blobs = self.client.bucket(uri.bucket_name).list_blobs(
+        blobs_iter = self.client.bucket(uri.bucket_name).list_blobs(
             delimiter="/", prefix=uri.full_prefix
         )
 
-        blob_list = [blob for blob in list(blobs) if blob.name != uri.full_prefix]
+        # Force consumption of the iterator to ensure prefixes are populated.
+        # This is critical because `blobs_iter.prefixes` is only populated
+        # after the iterator is consumed.
+        # We use list() to iterate over all items.
+        all_blobs = list(blobs_iter)
+
+        blob_list = [blob for blob in all_blobs if blob.name != uri.full_prefix]
+
+        # Use the prefixes property from the now-consumed iterator
+        prefixes = blobs_iter.prefixes
 
         return sorted(
             [
@@ -57,7 +66,7 @@ class GCS(Storage):
                     bucket_name=uri.bucket_name,
                     full_prefix=subdir,
                 )
-                for subdir in blobs.prefixes
+                for subdir in prefixes
             ]
             + [
                 CloudPath.from_full_prefix(
