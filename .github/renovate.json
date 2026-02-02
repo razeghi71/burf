@@ -1,0 +1,42 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base"
+  ],
+  "schedule": [
+    "before 6am on Monday"
+  ],
+  "separateMinorPatch": true,
+  "separateMajorMinor": true,
+  "major": {
+    "enabled": false
+  },
+  "patch": {
+    "enabled": false
+  },
+  "minor": {
+    "enabled": true,
+    "automerge": false
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 6am on Monday"
+    ]
+  },
+  "prConcurrentLimit": 5,
+  "prCreation": "immediate",
+  "labels": [
+    "dependencies",
+    "minor-update"
+  ],
+  "assignees": [],
+  "reviewers": [],
+  "packageRules": [
+    {
+      "matchManagers": ["pip_requirements", "pep621"],
+      "matchUpdateTypes": ["minor"],
+      "enabled": true
+    }
+  ]
+}
